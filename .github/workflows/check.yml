@@ -1,0 +1,26 @@
+# Copied from house 0.1.0. Change it in house, then copy it out again.
+# Runs on the GitHub mirror; the repository itself lives on Codeberg.
+name: check
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The purity check reads its names from outside the repository. Without the
+      # secret it says so and passes.
+      - name: purity names
+        env:
+          PURITY_NAMES: ${{ secrets.PURITY_NAMES }}
+        run: |
+          if [ -n "$PURITY_NAMES" ]; then
+            printf '%s\n' "$PURITY_NAMES" > "$RUNNER_TEMP/purity-names"
+            echo "TOGHEN_PURITY_NAMES=$RUNNER_TEMP/purity-names" >> "$GITHUB_ENV"
+          fi
+      - run: pnpm check
