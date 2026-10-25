@@ -1,8 +1,8 @@
 # Copied from house 0.1.0. Change it in house, then copy it out again.
 # Runs on the GitHub mirror when a version tag is pushed (`git push origin v0.1.2`
 # reaches Codeberg and the mirror at once). npm trusts this workflow by name
-# (trusted publishing), so there is no token and no sign-in, and each version
-# records the commit it was built from.
+# (trusted publishing), so there is no token and no sign-in. On npmjs.com the
+# trusted publisher must have "Allow npm publish" ticked.
 name: publish
 on:
   push:
@@ -33,5 +33,7 @@ jobs:
             echo "TOGHEN_PURITY_NAMES=$RUNNER_TEMP/purity-names" >> "$GITHUB_ENV"
           fi
       - run: pnpm check
-      # Trusted publishing needs npm 11.5.1 or later; Node 24 ships one.
-      - run: npm publish --access public
+      # Trusted publishing needs npm 11.5.1 or later; Node 24 ships one. No
+      # provenance: npm would want package.json's repository to name the mirror,
+      # and the repository is Codeberg.
+      - run: npm publish --access public --provenance=false
