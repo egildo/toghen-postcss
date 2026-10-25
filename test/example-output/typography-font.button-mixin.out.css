@@ -1,0 +1,32 @@
+@mixin --button {
+    --_button-background-color: initial;
+    --_button-color: initial;
+    background-color: var(--_button-background-color, var(--button-background-color, #ffffff));
+    color: var(--_button-color, var(--button-color, #1a1a1a));
+    padding-block: var(--button-padding-block, 8px);
+    border-radius: var(--button-border-radius, 6px);
+    font: var(--button-font, 500 0.875rem/1.25 Inter, "Helvetica Neue", sans-serif);
+    @contents;
+    &:where([data-variant='primary']) {
+        --_button-background-color: var(--button-primary-background-color, #1a66e6);
+        --_button-color: var(--button-primary-color, #ffffff)
+    }
+    &:where(:hover) {
+        --_button-background-color: var(--button-hover-background-color, #e0ebfc)
+    }
+    &:where(:active) {
+        --_button-background-color: var(--button-pressed-background-color, #e0ebfc);
+        --_button-color: var(--button-pressed-color, #666666)
+    }
+    &:where(:is(:disabled, [aria-disabled='true'])) {
+        --_button-color: var(--button-disabled-color, #666666)
+    }
+    &:where([aria-pressed='true']) {
+        --_button-background-color: var(--button-selected-background-color, #e0ebfc)
+    }
+    &:where([aria-pressed='true']) {
+        &:where(:hover) {
+            --_button-background-color: var(--button-selected-hover-background-color, #1a66e6)
+        }
+    }
+}

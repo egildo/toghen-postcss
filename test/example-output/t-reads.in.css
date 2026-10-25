@@ -1,0 +1,6 @@
+.label {
+    color: t(text.default);
+    background-color: t(surface.raised as value);
+    border-color: t(surface.accent, theme=dark);
+    font-size: t(type.label.fontSize);
+}

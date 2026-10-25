@@ -1,0 +1,89 @@
+.a:toghen(theme=dark) { x: 1; }
+    [@toghen/postcss] Cannot use ".a:toghen(theme=dark)": the :toghen() and :t() selectors are retired: write the rule for a context with @apply --when-<modifier>-<context> { … } (with @toghen mixins), or select the context's own spelling. The rule is left as written.
+
+.a:t(theme=dark) { x: 1; }
+    [@toghen/postcss] Cannot use ".a:t(theme=dark)": the :toghen() and :t() selectors are retired: write the rule for a context with @apply --when-<modifier>-<context> { … } (with @toghen mixins), or select the context's own spelling. The rule is left as written.
+
+@toghen base button;
+    [@toghen/postcss] Cannot use "@toghen base button": it is retired: write the path in full; the collection segment is optional when the system has one collection.
+
+.a { @toghen mode theme=dark; }
+    [@toghen/postcss] Cannot use "@toghen mode theme=dark": it is retired: read a value in a context with t(path, mode); t(path) lets the cascade choose.
+
+@toghen states via ':has(> input{state})';
+    [@toghen/postcss] Cannot use "@toghen states via ':has(> input{state})'": it is retired: a part is nested in the mixin of its group, placed by the spelling of its vocabulary; place a wrapper's state in your own selector and @apply the part's mixin.
+
+@toghen layer;
+    [@toghen/postcss] Cannot use "@toghen layer": it is retired: a part is nested in the rule that applies its group, in that rule's layer; there is no state layer.
+
+.a { @toghen layer states; }
+    [@toghen/postcss] Cannot use "@toghen layer states": it is retired: a part is nested in the rule that applies its group, in that rule's layer; there is no state layer.
+
+.a { @toghen ds.button; }
+    [@toghen/postcss] Cannot use "@toghen ds.button": it is retired: use @apply --button; with @toghen mixins.
+
+.a { @t text.default, theme=dark; }
+    [@toghen/postcss] Cannot use "@t text.default, theme=dark": it is retired: use t(text.default, theme=dark) in a declaration.
+
+.a { x: t(surface.raised as var); }
+    [@toghen/postcss] Cannot read "surface.raised": "as var" is retired or unknown: t(path) already writes var(--name, literal); there is no form to ask for it.
+
+.a { x: t(button as longhands); }
+    [@toghen/postcss] Cannot read "button": "as longhands" is retired or unknown: write the declarations yourself with t(), or apply the group with @apply and @toghen mixins; the composites and typography options say how declare and contexts write a composite.
+
+.a { x: t(button as shorthand); }
+    [@toghen/postcss] Cannot read "button": "as shorthand" is retired or unknown: write the declarations yourself with t(), or apply the group with @apply and @toghen mixins; the composites and typography options say how declare and contexts write a composite.
+
+.a { x: t(surface.raised as); }
+    [@toghen/postcss] Cannot read "surface.raised": as takes a form: the only form is value.
+
+.a { x: t(surface.raised as rem); }
+    [@toghen/postcss] Cannot read "surface.raised": "as rem" is retired or unknown: the only form is value.
+
+@toghen contexts ds as value;
+    [@toghen/postcss] Cannot read "ds": contexts, mixins and declare take no form; the composites option says how a composite is declared.
+
+.a { @toghen declare ds.space as value; }
+    [@toghen/postcss] Cannot read "ds.space": contexts, mixins and declare take no form; the composites option says how a composite is declared.
+
+.a { x: t(text.default); }   (option tokenLayer: 'tokens')
+    [@toghen/postcss] The option "tokenLayer" is retired and ignored: nothing replaces it. t(path) writes var(--name, literal) everywhere, in any layer.
+
+.a { x: t(text.default); }   (option stateLayer: 'states')
+    [@toghen/postcss] The option "stateLayer" is retired and ignored: nothing replaces it. A part is nested in the rule that applies its component, in that rule's layer.
+
+@layer tokens { @toghen mixins; }
+    [@toghen/postcss] Cannot write the mixins of "ds" inside a layer: a mixin has no cascade position of its own, and the mixins polyfill ignores one in a layer. Put @toghen mixins at the top of the stylesheet, outside any rule or layer.
+
+.a { @toghen mixins; }
+    [@toghen/postcss] Cannot write the mixins of "ds" inside a rule: a mixin is defined at the top of a stylesheet, and a rule cannot hold a definition. Put @toghen mixins at the top of the stylesheet, outside any rule or layer.
+
+@toghen mixins ds.button;
+    [@toghen/postcss] Cannot write the mixins of "ds.button": the argument is a collection, and may be left out when the system has one.
+
+.a { x: t(.button.color); }
+    [@toghen/postcss] Cannot resolve token ".button.color": Token '.button.color' not found in collection 'ds' for mode 'light/regular'.
+
+.a { x: t(button.colour); }
+    [@toghen/postcss] Cannot resolve token "ds.button.colour": Token 'button.colour' not found in collection 'ds' for mode 'light/regular'.
+
+.a { x: t(nothing.color); }
+    [@toghen/postcss] Cannot resolve token "ds.nothing.color": Token 'nothing.color' not found in collection 'ds' for mode 'light/regular'.
+
+@toghen contexts nothing;
+    [@toghen/postcss] Cannot write the contexts of "ds.nothing": it names no token.
+
+.a { @toghen declare ds.nothing; }
+    [@toghen/postcss] Cannot declare "ds.nothing": it names no token.
+
+.a { @toghen declare nothing; }
+    [@toghen/postcss] Cannot declare "ds.nothing": it names no token.
+
+@toghen mixins;   (a token at button.hover.pressed.backgroundColor: two values of the state axis nested)
+    [@toghen/postcss] Cannot write the mixins of "button": Path 'button.hover.pressed.backgroundColor' nests two parts of axis 'state': 'hover' and 'pressed'. Give the group "com.toghen": { "css": { "parts": false } }, or rename a key.
+
+.a { x: t(text.default); }   (a system of two collections, ds and other)
+    [@toghen/postcss] Cannot resolve token "text.default": Collection 'text' not found.
+
+.a { @apply --nothing; }   (after the mixins polyfill)
+    (no message; the polyfill writes: .a { @apply --nothing })

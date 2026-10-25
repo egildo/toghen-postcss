@@ -1,0 +1,8 @@
+{
+  "hover": {
+    "backgroundColor": {
+      "$type": "color",
+      "$value": "{surface.selected}"
+    }
+  }
+}

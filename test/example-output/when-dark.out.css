@@ -1,0 +1,6 @@
+.card {
+    background-color: var(--surface-raised, #ffffff);
+    &:where([data-theme='dark'], [data-theme='dark'] *) {
+        border: 1px solid var(--surface-accent, #1a66e6)
+    }
+}

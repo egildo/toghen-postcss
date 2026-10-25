@@ -1,0 +1,3 @@
+.label {
+    font: var(--type-label, 500 0.875rem/1.25 Inter, "Helvetica Neue", sans-serif)
+}

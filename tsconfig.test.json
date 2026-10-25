@@ -1,0 +1,15 @@
+{
+	// Tests, as they run under the Node test runner (tsx strips types without checking them, so this is the check).
+	// `src` is included because the tests import it. `rootDir` is the package so test files are not refused.
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"types": ["node"],
+		"noEmit": true,
+		"declaration": false,
+		"declarationMap": false,
+		"sourceMap": false,
+		"rootDir": "."
+	},
+	"include": ["src", "test"],
+	"exclude": ["node_modules", "dist"]
+}

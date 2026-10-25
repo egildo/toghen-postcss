@@ -1,0 +1,23 @@
+<!doctype html><html><head><style>
+/* tokens: x = X1, X2 under b=on; t = Y under a=dark else {x} */
+:root{--x:#111111}
+/* F2 */
+.f2 [data-a=dark]{--t:#aa0000}
+.f2 [data-b=on]{--x:#222222; --t:var(--x)}
+.f2 [data-b=off]{--x:#222222; --t:var(--x)}
+.f2 .use{color:var(--t,#111111)}
+/* F9 */
+.f9{--t:var(--t-a,var(--t-b)); --t-b:var(--x)}
+.f9 [data-a=dark]{--t-a:#aa0000; --t:var(--t-a,var(--t-b))}
+.f9 [data-a=light]{--t-a:initial; --t:var(--t-a,var(--t-b))}
+.f9 [data-b=on]{--x:#222222; --t-b:var(--x); --t:var(--t-a,var(--t-b))}
+.f9 .use{color:var(--t)}
+</style></head><body>
+<!-- expected: aA outer dark, inner b on -> #aa0000 ; only b -> #222222 ; none -> #111111; dark then light(a) then b on -> #222222 -->
+<div class="f2"><div class="n"><div data-a="dark"><div data-b="on"><span class="use" id="f2_ab">x</span></div></div>
+ <div data-b="on"><span class="use" id="f2_b">x</span></div><span class="use" id="f2_none">x</span>
+ <div data-a="dark"><div data-a="light"><div data-b="on"><span class="use" id="f2_alb">x</span></div></div></div></div></div>
+<div class="f9"><div class="n"><div data-a="dark"><div data-b="on"><span class="use" id="f9_ab">x</span></div></div>
+ <div data-b="on"><span class="use" id="f9_b">x</span></div><span class="use" id="f9_none">x</span>
+ <div data-a="dark"><div data-a="light"><div data-b="on"><span class="use" id="f9_alb">x</span></div></div></div></div></div>
+</body></html>

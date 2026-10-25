@@ -1,0 +1,12 @@
+.card {
+    --space-sm: 8px;
+}
+
+[data-density='compact'] .card {
+    --space-sm: 4px;
+}
+
+[data-theme='dark'] .panel {
+    --text-default: #1a1a1a;
+    --text-muted: #666666;
+}

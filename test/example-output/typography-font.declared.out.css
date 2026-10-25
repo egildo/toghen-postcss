@@ -1,0 +1,8 @@
+@layer tokens {
+    @layer defaults, theme, density;
+    @layer defaults {
+        :root {
+            --type-label: 500 0.875rem/1.25 Inter, "Helvetica Neue", sans-serif
+        }
+    }
+}

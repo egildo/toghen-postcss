@@ -1,0 +1,6 @@
+@mixin --type-label {
+    font-family: var(--type-label-font-family, Inter, "Helvetica Neue", sans-serif);
+    font-size: var(--type-label-font-size, 0.875rem);
+    font-weight: var(--type-label-font-weight, 500);
+    line-height: var(--type-label-line-height, 1.25)
+}

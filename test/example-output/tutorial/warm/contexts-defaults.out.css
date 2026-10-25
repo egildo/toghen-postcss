@@ -1,0 +1,39 @@
+@layer defaults {
+    :root {
+        --surface-raised: #ffffff;
+        --surface-accent: #e6661a;
+        --surface-selected: #e0ebfc;
+        --text-default: #1a1a1a;
+        --text-on-accent: #ffffff;
+        --text-muted: #666666;
+        --space-sm: 8px;
+        --radius-md: 6px;
+        --type-label-font-family: Inter, "Helvetica Neue", sans-serif;
+        --type-label-font-size: 0.875rem;
+        --type-label-font-weight: 500;
+        --type-label-line-height: 1.25;
+        --button-background-color: #ffffff;
+        --button-color: #1a1a1a;
+        --button-padding-block: 8px;
+        --button-border-radius: 6px;
+        --button-font-font-family: Inter, "Helvetica Neue", sans-serif;
+        --button-font-font-size: 0.875rem;
+        --button-font-font-weight: 500;
+        --button-font-line-height: 1.25;
+        --button-icon-color: #666666;
+        --button-primary-background-color: #e6661a;
+        --button-primary-color: #ffffff;
+        --button-hover-background-color: #e0ebfc;
+        --button-pressed-background-color: #e0ebfc;
+        --button-pressed-color: #666666;
+        --button-disabled-color: #666666;
+        --button-selected-background-color: #e0ebfc;
+        --button-selected-hover-background-color: #e6661a;
+        --field-background-color: #ffffff;
+        --field-color: #1a1a1a;
+        --field-padding-block: 8px;
+        --field-border-radius: 6px;
+        --field-focus-outline-color: #e6661a;
+        --field-disabled-opacity: 0.5
+    }
+}

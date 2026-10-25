@@ -1,0 +1,4 @@
+:root {
+    --button-primary-background-color: var(--surface-accent);
+    --button-primary-color: var(--text-on-accent);
+}

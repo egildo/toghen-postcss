@@ -1,0 +1,11 @@
+.card {
+    @toghen declare ds.space;
+}
+
+[data-density='compact'] .card {
+    @toghen declare ds.space, density=compact;
+}
+
+[data-theme='dark'] .panel {
+    @toghen declare ds.text, theme=light from theme=dark;
+}

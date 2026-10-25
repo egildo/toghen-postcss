@@ -1,0 +1,20 @@
+@mixin --when-theme-light {
+    &:where([data-theme='light'], [data-theme='light'] *) {
+        @contents
+    }
+}
+@mixin --when-theme-dark {
+    &:where([data-theme='dark'], [data-theme='dark'] *) {
+        @contents
+    }
+}
+@mixin --when-density-regular {
+    &:where([data-density='regular'], [data-density='regular'] *) {
+        @contents
+    }
+}
+@mixin --when-density-compact {
+    &:where([data-density='compact'], [data-density='compact'] *) {
+        @contents
+    }
+}

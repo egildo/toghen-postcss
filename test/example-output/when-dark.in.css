@@ -1,0 +1,6 @@
+.card {
+    background-color: t(surface.raised);
+    @apply --when-theme-dark {
+        border: 1px solid t(surface.accent);
+    }
+}

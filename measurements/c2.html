@@ -1,0 +1,6 @@
+<!doctype html><html><head><style>
+@layer tokens { @layer defaults, theme, density;
+ @layer defaults { :root{--m1:1; --m2:1; --m3:1} @media (prefers-color-scheme: dark){ :root{--m2:3} } }
+ @layer theme { @media (prefers-color-scheme: dark){ :root{--m1:3} } :root{--m2:2} @media (prefers-color-scheme: dark){ [data-k]{--m3:3} } @supports (color:red){ :root{--m4:s} } }
+ @layer density { :root{--m5:d} } }
+</style></head><body data-k></body></html>

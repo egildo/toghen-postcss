@@ -1,0 +1,23 @@
+@mixin --button-primary {
+    --_button-background-color: var(--button-primary-background-color, #1a66e6);
+    --_button-color: var(--button-primary-color, #ffffff)
+}
+@mixin --button-hover {
+    --_button-background-color: var(--button-hover-background-color, #e0ebfc)
+}
+@mixin --button-pressed {
+    --_button-background-color: var(--button-pressed-background-color, #e0ebfc);
+    --_button-color: var(--button-pressed-color, #666666)
+}
+@mixin --button-disabled {
+    --_button-color: var(--button-disabled-color, #666666)
+}
+@mixin --button-selected {
+    --_button-background-color: var(--button-selected-background-color, #e0ebfc);
+    &:where(:hover) {
+        --_button-background-color: var(--button-selected-hover-background-color, #1a66e6)
+    }
+}
+@mixin --button-selected-hover {
+    --_button-background-color: var(--button-selected-hover-background-color, #1a66e6)
+}

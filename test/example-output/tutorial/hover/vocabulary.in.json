@@ -1,0 +1,13 @@
+{
+  "$extensions": {
+    "com.toghen": {
+      "css": {
+        "parts": {
+          "state": {
+            "hover": ":hover"
+          }
+        }
+      }
+    }
+  }
+}

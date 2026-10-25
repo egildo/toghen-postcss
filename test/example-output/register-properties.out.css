@@ -1,0 +1,37 @@
+@layer tokens {
+    @layer defaults, theme, density;
+    @property --surface-raised {
+        syntax: '<color>';
+        inherits: true;
+        initial-value: #ffffff
+    }
+    @property --surface-accent {
+        syntax: '<color>';
+        inherits: true;
+        initial-value: #1a66e6
+    }
+    @property --surface-selected {
+        syntax: '<color>';
+        inherits: true;
+        initial-value: #e0ebfc
+    }
+    @layer defaults {
+        :root {
+            --surface-raised: #ffffff;
+            --surface-accent: #1a66e6;
+            --surface-selected: #e0ebfc
+        }
+    }
+    @layer theme {
+        [data-theme='light'] {
+            --surface-raised: #ffffff;
+            --surface-accent: #1a66e6;
+            --surface-selected: #e0ebfc
+        }
+        [data-theme='dark'] {
+            --surface-raised: #2b2b2b;
+            --surface-accent: #5c9bff;
+            --surface-selected: #26364d
+        }
+    }
+}

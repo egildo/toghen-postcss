@@ -1,0 +1,1 @@
+[@toghen/postcss] --surface-stripe changes under 'theme' and 'density'. Written as resolved values, the later block wins where both apply, which is right only if its value does not depend on both. Use references: 'var', or declare the combination yourself.

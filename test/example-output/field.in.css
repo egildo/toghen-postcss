@@ -1,0 +1,7 @@
+.field {
+    @apply --field;
+}
+
+.field:has(> input:focus-visible) {
+    @apply --field-focus;
+}

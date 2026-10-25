@@ -1,0 +1,6 @@
+.label {
+    color: var(--text-default, #1a1a1a);
+    background-color: #ffffff;
+    border-color: #5c9bff;
+    font-size: var(--type-label-font-size, 0.875rem);
+}

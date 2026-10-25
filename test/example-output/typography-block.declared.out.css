@@ -1,0 +1,11 @@
+@layer tokens {
+    @layer defaults, theme, density;
+    @layer defaults {
+        :root {
+            --type-label-font-family: Inter, "Helvetica Neue", sans-serif;
+            --type-label-font-size: 0.875rem;
+            --type-label-font-weight: 500;
+            --type-label-line-height: 1.25
+        }
+    }
+}

@@ -1,0 +1,17 @@
+@mixin --field {
+    background-color: var(--field-background-color, #ffffff);
+    color: var(--field-color, #1a1a1a);
+    padding-block: var(--field-padding-block, 8px);
+    border-radius: var(--field-border-radius, 6px);
+    @contents;
+    &:where(:has(> input:disabled)) {
+        opacity: var(--field-disabled-opacity, 0.5)
+    }
+}
+@mixin --field-focus {
+    outline-color: var(--field-focus-outline-color, #1a66e6);
+    @contents
+}
+@mixin --field-disabled {
+    opacity: var(--field-disabled-opacity, 0.5)
+}

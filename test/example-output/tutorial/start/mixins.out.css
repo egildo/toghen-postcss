@@ -1,0 +1,47 @@
+@mixin --type-label {
+    font-family: var(--type-label-font-family, Inter, "Helvetica Neue", sans-serif);
+    font-size: var(--type-label-font-size, 0.875rem);
+    font-weight: var(--type-label-font-weight, 500);
+    line-height: var(--type-label-line-height, 1.25)
+}
+@mixin --button {
+    background-color: var(--button-background-color, #ffffff);
+    color: var(--button-color, #1a1a1a);
+    padding-block: var(--button-padding-block, 8px);
+    border-radius: var(--button-border-radius, 6px);
+    font-family: var(--button-font-font-family, Inter, "Helvetica Neue", sans-serif);
+    font-size: var(--button-font-font-size, 0.875rem);
+    font-weight: var(--button-font-font-weight, 500);
+    line-height: var(--button-font-line-height, 1.25);
+    @contents
+}
+@mixin --button-font {
+    font-family: var(--button-font-font-family, Inter, "Helvetica Neue", sans-serif);
+    font-size: var(--button-font-font-size, 0.875rem);
+    font-weight: var(--button-font-font-weight, 500);
+    line-height: var(--button-font-line-height, 1.25)
+}
+@mixin --button-icon {
+    color: var(--button-icon-color, #666666);
+    @contents
+}
+@mixin --when-theme-light {
+    &:where([data-theme='light'], [data-theme='light'] *) {
+        @contents
+    }
+}
+@mixin --when-theme-dark {
+    &:where([data-theme='dark'], [data-theme='dark'] *) {
+        @contents
+    }
+}
+@mixin --when-density-regular {
+    &:where([data-density='regular'], [data-density='regular'] *) {
+        @contents
+    }
+}
+@mixin --when-density-compact {
+    &:where([data-density='compact'], [data-density='compact'] *) {
+        @contents
+    }
+}

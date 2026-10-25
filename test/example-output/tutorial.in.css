@@ -1,0 +1,14 @@
+@layer tokens {
+    @toghen contexts;
+}
+
+@toghen mixins;
+
+.button {
+    display: inline-flex;
+    @apply --button;
+}
+
+.button-icon {
+    @apply --button-icon;
+}

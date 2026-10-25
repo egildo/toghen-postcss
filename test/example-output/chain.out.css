@@ -1,0 +1,28 @@
+@layer tokens {
+    @layer defaults, theme, density;
+    @layer defaults {
+        :root {
+            --surface-stripe: var(--surface-stripe--density, var(--surface-stripe--theme, #f5f5f5))
+        }
+    }
+    @layer theme {
+        [data-theme='light'] {
+            --surface-stripe--theme: initial;
+            --surface-stripe: var(--surface-stripe--density, var(--surface-stripe--theme, #f5f5f5))
+        }
+        [data-theme='dark'] {
+            --surface-stripe--theme: #242424;
+            --surface-stripe: var(--surface-stripe--density, var(--surface-stripe--theme, #f5f5f5))
+        }
+    }
+    @layer density {
+        [data-density='regular'] {
+            --surface-stripe--density: initial;
+            --surface-stripe: var(--surface-stripe--density, var(--surface-stripe--theme, #f5f5f5))
+        }
+        [data-density='compact'] {
+            --surface-stripe--density: #ececec;
+            --surface-stripe: var(--surface-stripe--density, var(--surface-stripe--theme, #f5f5f5))
+        }
+    }
+}

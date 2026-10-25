@@ -1,0 +1,48 @@
+schema_version: "1.0"
+
+preset:
+  id: "toghen-house"
+  name: "Toghen house register"
+  version: "0.1.0"
+  description: "The spec, plan and tasks templates in Toghen's register (findings, questions, answers; a constitution gate; units; a closing Fold phase), an analyze pass over the living docs, and date-named feature folders."
+
+requires:
+  # Written against speckit 1.2.3 and its stock templates and commands.
+  # An upgrade fails this check on purpose: re-read the stock files, then raise it.
+  speckit_version: "==1.2.3"
+
+provides:
+  templates:
+    - type: "template"
+      name: "spec-template"
+      file: "templates/spec-template.md"
+      description: "Spec with findings, questions and answers beside speckit's stories and requirements"
+      replaces: "spec-template"
+
+    - type: "template"
+      name: "plan-template"
+      file: "templates/plan-template.md"
+      description: "Plan with a constitution gate first, then design, units and risks"
+      replaces: "plan-template"
+
+    - type: "template"
+      name: "tasks-template"
+      file: "templates/tasks-template.md"
+      description: "Tasks whose last phase is always Fold"
+      replaces: "tasks-template"
+
+    - type: "command"
+      name: "speckit.analyze"
+      file: "commands/speckit.analyze.md"
+      description: "Stock analyze, plus a read-only pass over the living docs of the packages the feature touches"
+      strategy: "append"
+
+    - type: "command"
+      name: "speckit.specify"
+      file: "commands/speckit.specify.md"
+      description: "Stock specify, with the feature folder named <date>-<short-name> instead of a running number"
+      strategy: "prepend"
+
+tags:
+  - "toghen"
+  - "house"

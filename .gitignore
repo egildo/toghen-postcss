@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# OS
+.DS_Store
+
+# Claude Code: local notes, settings and worktrees
+.claude/*
+!.claude/skills/
+
+# CodeGraph index
+.codegraph/
+
+# npm lockfile: this is a pnpm workspace
+package-lock.json

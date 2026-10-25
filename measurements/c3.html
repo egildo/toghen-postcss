@@ -1,0 +1,7 @@
+<!doctype html><html><head><style>
+@layer tokens { :root{--surface:#fff} [data-theme=dark]{--surface:#111} }
+@layer components { .card{color:var(--surface,#fff)} .nf{color:var(--undeclared,#abcdef)} .nf2{color:var(--surface2,#abcdef)} }
+</style></head><body>
+<div id="light"><span class="card" id="c1">x</span></div>
+<div data-theme="dark" id="sub"><section><span class="card" id="c2">x</span><span class="nf" id="c3">x</span></section></div>
+</body></html>
