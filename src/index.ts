@@ -6,6 +6,7 @@ import {
   InvalidTokenError,
   ResolverValidationError,
   getContextSelector,
+  getLightDark,
   cssPropertyName,
   cssIdentifier,
   normalizeColorToSRGB01,
@@ -1148,6 +1149,10 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
     if (layered && before !== undefined && before !== order) {
       return `[@toghen/postcss] Cannot write the contexts of "${path}" in layer '${layer}': its order would be "${order}", and the layer already has "${before}". CSS keeps the first order statement of a layer. Put the collections in different layers, or give them the same modifiers in the same order.`;
     }
+    const written = modifiers.find((m) => getLightDark(m));
+    if (bind === 'chain' && written) {
+      return `[@toghen/postcss] Cannot chain modifier '${written.name}': it is written with light-dark(), which has no blocks to chain. Leave out bind: 'chain', or spell the modifier with a selector or an at-rule.`;
+    }
     const plan =
       bind === 'chain' && modifiers.length > 0
         ? chains(atRule, result, path, collection, modifiers, [
@@ -1162,17 +1167,63 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
     const inDefaults =
       plan && declarations(atRule, result, path, defaults, undefined, undefined, (lookup) => plan.write(lookup), plan.lookups, members);
     const flagged = plan?.flags() ?? [];
-    const inRoot = inDefaults
+    let inRoot = inDefaults
       ? [...flagged, ...inDefaults]
       : declarations(atRule, result, path, defaults, undefined, undefined, undefined, undefined, members);
+
+    // A modifier written with light-dark() has no blocks: each token it varies is one pair in the defaults.
+    const paired = new Map<string, string>();
+    const introductions: ChildProps[] = [];
+    for (const modifier of modifiers) {
+      const pair = getLightDark(modifier);
+      if (!pair) continue;
+      const [lightMode, darkMode] = [pair.light, pair.dark].map((c) => collection.modeNamed(`${modifier.name}=${c}`));
+      const [lit, dim] = [lightMode, darkMode].map((mode) =>
+        declarations(
+          atRule,
+          result,
+          path,
+          mode,
+          undefined,
+          (lookup) => !sameIn(lookup, lightMode, darkMode),
+          undefined,
+          undefined,
+          members,
+        ),
+      );
+      // Varied by the text written, not the resolved value: under references: 'var' a shadow reading a themed colour is the same in both.
+      const dark = dim.filter((d) => lit.some((l) => l.prop === d.prop && l.value !== d.value));
+      const light = lit.filter((l) => dark.some((d) => d.prop === l.prop));
+      const other = light.find((w) => system.resolveToken(w.token ?? w.who!, lightMode)?.$type !== 'color');
+      if (other) {
+        const lookup = other.token ?? other.who!;
+        report(
+          atRule,
+          result,
+          `[@toghen/postcss] Cannot write modifier '${modifier.name}' with light-dark(): '${lookup}' is a ${system.resolveToken(lookup, lightMode)?.$type ?? 'value'}, and light-dark() takes only colours. Write the modifier with a selector or an at-rule, or vary only colours in it.`,
+        );
+        continue;
+      }
+      for (const w of light) paired.set(w.prop, modifier.name);
+      inRoot = inRoot.map((w) => {
+        const l = light.find((x) => x.prop === w.prop);
+        const d = dark.find((x) => x.prop === w.prop);
+        return l && d ? { ...w, value: `light-dark(${l.value}, ${d.value})` } : w;
+      });
+      if (descriptions === 'comment' && modifier.description && light.length > 0) introductions.push(comment(modifier.description));
+    }
     const everything: Written[] = [...inRoot];
     blocks.push(...registrations(inRoot, defaults));
     blocks.push(
-      ...sublayer('defaults', [{ selector: rootSelector, nodes: commented(inRoot, path, defaults, undefined), raws: { between: ' ' } }]),
+      ...sublayer('defaults', [
+        { selector: rootSelector, nodes: [...introductions, ...commented(inRoot, path, defaults, undefined)], raws: { between: ' ' } },
+      ]),
     );
     const changedBy = new Map<string, string[]>();
 
     for (const modifier of modifiers) {
+      // Written with light-dark(): no blocks, no sublayer, and no spelling to ask for (its pairs are in the defaults).
+      if (getLightDark(modifier)) continue;
       // The tokens this modifier varies: not the same CSS in all its contexts, the others at their defaults.
       const modes = modifier.contexts.map((context) => collection.modeNamed(`${modifier.name}=${context}`));
       const compared = (lookup: string) => modes.some((m) => !sameIn(lookup, m, modes[0]));
@@ -1227,6 +1278,16 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
           members,
         );
         if (written.length === 0) continue;
+        // ponytail: one pair per token, so a second modifier's block would replace it with a plain value; a pair per block would lift this.
+        for (const w of written) {
+          const by = paired.get(w.prop);
+          if (by)
+            reportOnce(
+              atRule,
+              result,
+              `[@toghen/postcss] Cannot write modifier '${modifier.name}' beside '${by}': both vary '${w.who ?? w.token}', and the block of '${modifier.name}' would replace the light-dark() pair of '${by}' with a plain value. Spell one of them with a selector or an at-rule, or vary different tokens in each.`,
+            );
+        }
         everything.push(...written);
         if (plan) written.unshift(...plan.flags(modifier.name, context));
         for (const { prop, token, chained } of written) {
@@ -1524,7 +1585,16 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
 
     // The document's spelling around `@contents`: a selector matches the element or any descendant, at no added specificity.
     for (const modifier of collection.resolver?.getModifiers() ?? []) {
+      const lightDark = getLightDark(modifier);
       for (const context of modifier.contexts) {
+        if (lightDark) {
+          out.push(
+            comment(
+              ` --when-${ident(modifier.name)}-${ident(context)} is left out: modifier '${modifier.name}' is written with light-dark(); set color-scheme on the element instead. `,
+            ),
+          );
+          continue;
+        }
         const spelling = getContextSelector(modifier, context);
         if (!spelling) continue;
         const contents = { name: 'contents', params: '' } as ChildProps;
@@ -1617,10 +1687,19 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
     }
     // The contexts: a selector and an at-rule of one context each get their own name.
     for (const modifier of collection.resolver?.getModifiers() ?? []) {
+      const lightDark = getLightDark(modifier);
       for (const context of modifier.contexts) {
+        const name = `--${ident(modifier.name)}-${ident(context)}`;
+        if (lightDark) {
+          omitted.push(
+            comment(
+              ` :${name} and ${name} are left out: modifier '${modifier.name}' is written with light-dark(), which has no selector or media query to name; set color-scheme on the element instead. `,
+            ),
+          );
+          continue;
+        }
         const spelling = getContextSelector(modifier, context);
         if (!spelling) continue;
-        const name = `--${ident(modifier.name)}-${ident(context)}`;
         const at = `the ${modifier.name} "${context}"`;
         if (spelling.selector !== undefined) put(name, at, spelling.selector);
         if (spelling.atRule !== undefined) put(name, at, spelling.atRule);

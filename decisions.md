@@ -793,6 +793,23 @@ Lib now computes every value it can, so any `oklch()` string or `color-mix(in ok
 
 **With it.** Biome lints and formats the code, `pnpm check` runs every gate, and speckit with the house preset runs the rounds. The tests are type-checked, under `tsconfig.test.json`, and read the running example through `@toghen/lib`.
 
+## Ruled: a two-context colour modifier written with `light-dark()` (30 October 2026)
+
+**Status:** done, in 0.1.1.
+
+**The need.** A theme spelled as a media query lets only the operating system choose the scheme; an app cannot offer its own switch. `light-dark(a, b)` follows the used `color-scheme`, which an app sets on any element. The browser behaviour was measured earlier (`measurements/RESULTS.md`, case 5); this round designs the form and builds it. The document's shape is lib's `getLightDark` (lib's decisions.md, same date).
+
+**What is written.** For a `lightDark` modifier: no block, no sublayer and no missing-spelling error; the defaults hold `light-dark(<light context>, <dark context>)` for each token the modifier varies. Varied is measured as for blocks, then narrowed to the text written: under `references: 'var'` a shadow that only reads a themed colour is the same text on both sides, so it needs no pair. The layer order statement keeps the modifier's name. Under `descriptions: 'comment'` the modifier's description goes before the first pair.
+
+**Ruled by Egildo, 30 October 2026.**
+- *2a: only colours.* Any other varied type is an error. Rejected, 2b: warn and write the light value, which hides in the output that the theme does nothing for that token.
+- *3a: no `--when-` mixin and no `:--` spelling.* A comment in their place says why. Rejected, 3b: a mixin that sets `color-scheme`, which changes what a `--when-` mixin means (a condition on the element) into an instruction.
+- *4a: no `color-scheme` is written.* The app sets it, and without one the light side shows. Rejected, 4b: the plugin writes `color-scheme: light dark` on the root, which would override the document's default context.
+
+**A ceiling.** One pair serves a token; a second modifier's block that varies the same token would replace it with a plain value and drop the scheme, so it is an error naming both modifiers and the token. A pair per block would lift it. `bind: 'chain'` is refused with such a modifier: it has no blocks to chain.
+
+**What the build found.** The plan expected a shadow reading a themed colour to be unvaried under `references: 'var'`; the block comparison is on resolved values, so it was varied. The pair compares the text written instead, which gives the plan's result without a special case. The mixins comment is one per context, as the spellings' is.
+
 ## Open questions
 
 - *Moot since 13 October 2026.* **A single read in a state's scope, through a reference.** It now holds for a pin to a state too. A block in a
@@ -838,7 +855,7 @@ every context with a spelling, and the parent context no longer has to be known.
   an error unless a base names the collection. If systems with a shared
   modifier name turn out to be common, the pseudo-class could take a collection
   (`:toghen(ds.theme=dark)`); not done until someone needs it.
-- **A form per modifier.** `light-dark()` for a two-context colour modifier, as a
+- *Closed 30 October 2026, see "A two-context colour modifier written with `light-dark()`".* **A form per modifier.** `light-dark()` for a two-context colour modifier, as a
   field in the document beside `selector` and `atRule`, is kept for later; its
   evaluation at the consumer was measured, its document shape was not designed.
 - **`var()` fallbacks inside the token layer.** `var(--surface-accent, #0066cc)`

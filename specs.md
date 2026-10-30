@@ -229,6 +229,8 @@ appears in code. The directive's grammar is in
 [reference.md](./reference.md#toghen-contexts).
 It is refused inside a rule, since the contexts are rules themselves.
 
+**A modifier with no blocks.** A modifier written with `light-dark()` (lib's `getLightDark`) has no selector for a block to sit under: the browser chooses the side from the used `color-scheme`, which the app sets. Each token it varies is one `light-dark(a, b)` in the defaults, so only colours can be paired, and a token another modifier's block also varies would lose its pair to that block, which is an error (a pair per block would lift it). It keeps its name in the layer order, so an order shared across directives does not change. It has no mixin and no custom selector, since CSS cannot ask whether the used scheme is dark. See decisions.md, *A two-context colour modifier written with `light-dark()`*.
+
 **Why the blocks are complete.** A block that held only the tokens that differ from the defaults could not be placed by the plugin, which cannot see how selectors nest. A light island inside a dark panel needs the tokens the panel changed set back, and only the author knows that nesting. Each block therefore restates all that its modifier varies, so any element anywhere can set any context and be right, with no analysis of nesting and nothing for the author to say. The price is a few duplicated lines per modifier. It also leaves a scope wrapper (a directive that wraps rules and infers `from`) nothing to infer.
 
 Varied is measured on the resolved values, the way `declare` measures a

@@ -503,6 +503,26 @@ A `--when-` mixin wraps its contents in a context's selector, with `:where()`, w
 }
 ```
 
+## Letting the app choose the scheme
+
+A theme spelled as a media query lets only the operating system choose. For two contexts that are a light and a dark, spell the modifier with `lightDark` instead of a selector or an at-rule:
+
+```json
+"theme": {
+  "default": "day",
+  "contexts": { "day": [], "night": [ { "color": { "bg": { "$value": { "colorSpace": "srgb", "components": [0, 0, 0] } } } } ] },
+  "$extensions": { "com.toghen": { "css": { "lightDark": { "light": "day", "dark": "night" } } } }
+}
+```
+
+`@toghen contexts` then writes no block for `theme`; each colour it varies is one pair in the defaults:
+
+```css
+:root { --color-bg: light-dark(#ffffff, #000000) }
+```
+
+`light-dark()` follows the used `color-scheme`, which the app sets on any element. `:root { color-scheme: light dark; }` follows the system; `color-scheme: light` or `color-scheme: dark` on any element chooses for that element and its descendants. The plugin writes no `color-scheme`, and without one the light side shows. Only colours can be paired, and no mixin or spelling is written for the modifier (a comment says so). A media-query spelling remains the choice for browsers older than 2024, which do not know `light-dark()`.
+
 ## Read one token in a rule
 
 `t()` is the short form of `toghen()`, and the [reference](./reference.md) gives both. A read is written as the token's custom property, with the default's value as fallback:

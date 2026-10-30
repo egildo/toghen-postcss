@@ -232,6 +232,8 @@ A modifier's spelling comes from its `$extensions["com.toghen"].css` member: a `
 
 Inside a named layer, the plugin writes an order statement first, naming the layers `defaults`, then each modifier's name, in resolution order. Each block then sits in a sublayer named for its modifier, and the defaults in the `defaults` sublayer. CSS keeps the first order statement of a layer, so a second `@toghen contexts` in the same layer must give the same order. An anonymous layer is written flat, like the top level.
 
+A modifier written with `light-dark()` (a `lightDark` member in its CSS spelling; see [lib's `getLightDark`](https://codeberg.org/Toghen/lib/src/branch/main/reference.md#getlightdarkmodifier-lightdark--undefined) for the shape) gets no block, no sublayer and no error for a missing spelling. Each token it varies is written in the defaults as `light-dark(<value in the light context>, <value in the dark context>)`; a token that is the same text in both stays plain. Only colours can be paired. The plugin writes no `color-scheme`: the app sets it, and without one the light side shows. Under `descriptions: 'comment'` the modifier's description is written before the first pair. The modifier keeps its place in the layer order statement. A token it varies must not be varied by another modifier's block, and `bind: 'chain'` is refused with it; see [Messages for contexts](#messages-for-contexts).
+
 Where two modifiers change one property and `references` is `'resolve'`, the plugin warns that the later block's value wins whole. With `'var'`, the browser combines the two.
 
 Forms are refused. See [Messages for forms](#messages-for-forms).
@@ -250,7 +252,7 @@ Placed at the top of the stylesheet, outside any rule and any layer. It takes a 
 | `--<path>` | A group whose direct tokens all have a CSS property name, or a group with no direct tokens and at least one part | First `--_<name>: initial` for every re-pointed token whose component it is (see below). Then one declaration per direct token, reading that token's property; a re-pointed token reads `var(--_<name>, var(--<name>, fallback))`. A typography token contributes its longhands (`'block'`) or its shorthand (`'font'`). Then `@contents`. Then the part mixins, in vocabulary order. |
 | `--<path>` | A part (a subgroup whose key is a vocabulary value) | For each token of the part: where the twin at rest is a token, the twin's local property `--_<name>` is set to the part's property. Where there is no twin, a token directly in the part sets its own property. Then the parts nested in it. No `@contents`. |
 | `--<path>` | A typography token | Its longhands (`'block'`) or its `font` shorthand (`'font'`). |
-| `--when-<modifier>-<context>` | Each context that has a selector or an at-rule | Wraps `@contents` in the context's spelling. |
+| `--when-<modifier>-<context>` | Each context that has a selector or an at-rule; not for a modifier written with `light-dark()`, which gets a comment instead | Wraps `@contents` in the context's spelling. |
 
 A group's mixin is written in document order, the group before its children. The `--when-` mixins come last, the modifiers in the order the document declares them, each one's contexts as declared. See [Messages for mixins](#messages-for-mixins).
 
@@ -304,6 +306,7 @@ Placed at the top of the stylesheet, outside any rule and any layer, like `@togh
 | A selector of a vocabulary value on the root | `@custom-selector :--<axis>-<value> <selector>;` | `:--state-hover` |
 | A selector of a value a group declares or overrides | `@custom-selector :--<group>-<axis>-<value> <selector>;` | `:--ui-checkbox-state-pressed` |
 | A context's selector | `@custom-selector :--<modifier>-<context> <selector>;` | `:--theme-dark` |
+| A context of a modifier written with `light-dark()` | a comment saying why it is left out (no selector or media query to name) | |
 | One `@media` rule, of a value or a context | `@custom-media --<name> <query>;` | `--input-fine` |
 | A spelling holding `&`, or an at-rule other than `@media` | a comment saying why it is left out | |
 
@@ -452,6 +455,9 @@ No CSS serialisation for a value of shape <keys>. Composite types the core resol
 | `Cannot write the contexts of "<path>" in layer '<layer>': its order would be "<order>", and the layer already has "<before>". CSS keeps the first order statement of a layer. Put the collections in different layers, or give them the same modifiers in the same order.` | A second `@toghen contexts` in the same layer gives another order. | Use a different layer, or the same modifiers in the same order. |
 | `Cannot write the contexts of modifier '<modifier>': contexts '<first>' and '<clash>' have the same CSS spelling, so neither block could be told from the other. Give each its own selector or at-rule.` | Two non-default contexts share a spelling. | Give each context its own selector or at-rule. |
 | `Cannot write context '<context>' of modifier '<modifier>': the resolver document gives it no CSS selector. Add $extensions["com.toghen"].css to the modifier.` | A context other than the default has no spelling. | Add the spelling to the modifier. |
+| `Cannot write modifier '<modifier>' with light-dark(): '<token>' is a <type>, and light-dark() takes only colours. Write the modifier with a selector or an at-rule, or vary only colours in it.` | A modifier written with `light-dark()` varies a token that is not a colour (in the text written: under `references: 'var'` a shadow that only reads a themed colour is the same on both sides and is no error). Nothing is written for that modifier. | Spell the modifier with a selector or an at-rule, or vary only colours in it. |
+| `Cannot write modifier '<modifier>' beside '<paired>': both vary '<token>', and the block of '<modifier>' would replace the light-dark() pair of '<paired>' with a plain value. Spell one of them with a selector or an at-rule, or vary different tokens in each.` | A token is varied by a `light-dark()` modifier and by another modifier's block. | Spell one of them with a selector or an at-rule, or vary different tokens in each. |
+| `Cannot chain modifier '<modifier>': it is written with light-dark(), which has no blocks to chain. Leave out bind: 'chain', or spell the modifier with a selector or an at-rule.` | `bind: 'chain'` and a modifier written with `light-dark()`. | Leave out `bind: 'chain'`, or spell the modifier with a selector or an at-rule. |
 | `Cannot write the contexts of "<path>": <lib message>` | Lib raised an error while writing the directive. | Read the lib message. |
 | Warning, always a warning: `<prop> changes under '<modifier>' and '<modifier>'. Written as resolved values, the later block wins where both apply, which is right only if its value does not depend on both. Use references: 'var', or declare the combination yourself.` | A property changes under two modifiers and `references` is `'resolve'`. | Use `references: 'var'`, or declare the combination yourself. |
 
