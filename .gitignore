@@ -17,3 +17,7 @@ dist/
 
 # npm lockfile: this is a pnpm workspace
 package-lock.json
+.specify/
+.claude/
+CLAUDE.md
+CLAUDE.local.md
