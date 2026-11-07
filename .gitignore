@@ -17,7 +17,11 @@ dist/
 
 # npm lockfile: this is a pnpm workspace
 package-lock.json
-.specify/
+# speckit: generated, except the constitution, copied from house
+.specify/*
+!.specify/memory/
+.specify/memory/*
+!.specify/memory/constitution.md
 .claude/
 CLAUDE.md
 CLAUDE.local.md
