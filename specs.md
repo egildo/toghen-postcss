@@ -41,15 +41,16 @@ The `Rule` visitor reads a selector only to report the retired ones. Any other s
 
 ### Directive handling
 
-A call is found in a declaration value with one pattern, long and short form alike, only where a function name can start:
+A call is found in a declaration value with one pattern, long and short form alike, only where a function name can start. A string and an unquoted `url()` are matched first and whole, so a `t(` inside one is text, as `url("img/t(1).png")` is in CSS:
 
 ```regex
-/(?<![\w-])(?:toghen|t)\(\s*([^,)]+?)(?:\s*,\s*([^)]+?))?\s*\)/g
+/("(?:[^"\\]|\\[\s\S])*"?|'(?:[^'\\]|\\[\s\S])*'?|(?<![\w-])[uU][rR][lL]\((?!\s*["'])[^)]*\)?)|(?<![\w-])(?:toghen|t)\(\s*([^,)]+?)(?:\s*,\s*([^)]+?))?\s*\)/g
 ```
 
 **Capture groups:**
-1. `path`: the token path, with ` as value` after it when given (e.g., `colors.primary.blue as value`)
-2. `mode`: optional context (e.g., `theme=dark`)
+1. a string or an unquoted `url()`, left as written
+2. `path`: the token path, with ` as value` after it when given (e.g., `colors.primary.blue as value`)
+3. `mode`: optional context (e.g., `theme=dark`)
 
 Each match goes through one function, `read()`. It resolves the path, takes the context from the call or the default, and prints the value in the form the position and `as value` decide: a literal, a `var()` of the property, or, under `references: 'var'`, a `var()` of the first hop. `system.resolveValue()` is one step of it, never the whole.
 

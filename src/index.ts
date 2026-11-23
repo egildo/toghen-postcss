@@ -421,12 +421,16 @@ export interface ToghenPluginOptions {
  * inside a declaration value. The name is matched whole: `t(` counts only where a CSS
  * function name can start, never after a letter, a digit, `-` or `_`, so `inset(`,
  * `rect(`, `repeat(` and `format(` are left alone. `toghen(` follows the same boundary.
+ * A string and an unquoted `url()` are matched first, whole, so a `t(` inside one is text:
+ * `url("img/t(1).png")` is no call.
  *
  * Capture groups:
- *   1 — token path, with `as value` after it if there is one (e.g. `colors.primary.blue as value`)
- *   2 — mode        (e.g. `dark`, optional)
+ *   1 — a string or an unquoted `url()`, left as it is
+ *   2 — token path, with `as value` after it if there is one (e.g. `colors.primary.blue as value`)
+ *   3 — mode        (e.g. `dark`, optional)
  */
-const TOGHEN_RE = /(?<![\w-])(?:toghen|t)\(\s*([^,)]+?)(?:\s*,\s*([^)]+?))?\s*\)/g;
+const TOGHEN_RE =
+  /("(?:[^"\\]|\\[\s\S])*"?|'(?:[^'\\]|\\[\s\S])*'?|(?<![\w-])[uU][rR][lL]\((?!\s*["'])[^)]*\)?)|(?<![\w-])(?:toghen|t)\(\s*([^,)]+?)(?:\s*,\s*([^)]+?))?\s*\)/g;
 const MIXINS_DIRECTIVE = /^(?:mixins|spellings)(?:\s|$)/;
 const RETIRED_SELECTOR = /:(?:toghen|t)\(/;
 const HAS_CALL = /(?<![\w-])(?:toghen|t)\(/;
@@ -679,7 +683,8 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
    * was.
    */
   function directives(value: string, node: Node, result: Result): string {
-    return value.replace(TOGHEN_RE, (original, written: string, rawMode?: string) => {
+    return value.replace(TOGHEN_RE, (original, text: string | undefined, written: string, rawMode?: string) => {
+      if (text !== undefined) return original;
       let path = written.trim();
       const given = rawMode?.trim();
       const mode = given ?? defaultMode;

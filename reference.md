@@ -185,7 +185,7 @@ With `'chain'`, `@toghen contexts` writes a token that more than one modifier ch
 
 ## Reading a token: `t()` and `toghen()`
 
-A read appears in a declaration value. Its forms:
+A read appears in a declaration value, outside a string and a `url()`: `url("img/t(1).png")` holds no read. Its forms:
 
 | Written | Writes | Literal in |
 |---|---|---|

@@ -74,6 +74,17 @@ describe('t() is toghen()', () => {
     assert.equal((await run(css)).css, 'a { width: my-toghen(ds.card.pad); height: xtoghen(ds.card.pad) }');
   });
 
+  it('leaves a string and a url() alone, under throw too, and reads a call beside one', async () => {
+    const css = [
+      'a { background: url("img/t(1).png"), URL(img/toghen(2).png); content: "see t(x)" \'it\\\'s toghen(y)\';',
+      'b: "t(" t(ds.card.pad); c: url(a.png) t(ds.card.pad) }',
+    ].join(' ');
+    assert.equal(
+      (await run(css)).css,
+      'a { background: url("img/t(1).png"), URL(img/toghen(2).png); content: "see t(x)" \'it\\\'s toghen(y)\'; b: "t(" var(--card-pad, 16px); c: url(a.png) var(--card-pad, 16px) }',
+    );
+  });
+
   it('fails like toghen() does, and leaves the call as written', async () => {
     const out = await run('a { color: t(ds.card.nope) }', { onUnresolved: 'warn' });
     assert.equal(out.css, 'a { color: t(ds.card.nope) }');
