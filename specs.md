@@ -53,7 +53,7 @@ A call is found in a declaration value with one pattern, long and short form ali
 
 Each match goes through one function, `read()`. It resolves the path, takes the context from the call or the default, and prints the value in the form the position and `as value` decide: a literal, a `var()` of the property, or, under `references: 'var'`, a `var()` of the first hop. `system.resolveValue()` is one step of it, never the whole.
 
-Three at-rules are directives: `@toghen contexts`, `@toghen mixins` and `@toghen declare`. Any other `@toghen` at-rule is reported with one sentence naming its replacement, and stays in place.
+Three at-rules are directives: `@toghen contexts`, `@toghen mixins` and `@toghen declare`. Any other `@toghen` at-rule is reported with one sentence naming its replacement, and stays in place. A directive is replaced by what it writes, and every node it writes carries the directive's `source`, so a warning about it and a source map both point at the directive. What it writes is output: the plugin does not read it again.
 
 ### Short forms
 

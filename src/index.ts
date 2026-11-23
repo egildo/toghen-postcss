@@ -1,4 +1,4 @@
-import type { AtRule, ChildProps, Declaration, Node, Plugin, Result } from 'postcss';
+import type { AtRule, ChildNode, ChildProps, Declaration, Node, Plugin, Result } from 'postcss';
 import {
   type DesignSystem,
   PathNotFoundError,
@@ -614,14 +614,21 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
     else replace(atRule, outcome);
   }
 
-  /** Writes a directive's output in its place, each declaration in it marked as written. */
+  /**
+   * Writes a directive's output in its place. Every node written carries the directive's `source`, so a warning and a
+   * source map point at the directive, and each declaration is marked as written.
+   */
   function replace(atRule: AtRule, nodes: ChildProps[]): void {
     const parent = atRule.parent!;
     const at = parent.index(atRule);
     atRule.replaceWith(...nodes);
-    for (const node of parent.nodes.slice(at, at + nodes.length)) {
+    const mark = (node: ChildNode) => {
+      raw(node).source = atRule.source;
       if (node.type === 'decl') wrote.set(raw(node), node.value);
-      else if (node.type !== 'comment') node.walkDecls((decl) => void wrote.set(raw(decl), decl.value));
+    };
+    for (const node of parent.nodes.slice(at, at + nodes.length)) {
+      mark(node);
+      if (node.type !== 'decl' && node.type !== 'comment') node.walk(mark);
     }
   }
 
