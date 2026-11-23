@@ -1141,7 +1141,7 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
 
     // CSS keeps a layer's first order statement, so a second that differs would be ignored without a word.
     // One that is the same changes nothing, and is written again, so each directive's output stands alone.
-    const order = ['defaults', ...modifiers.map((m) => m.name)].join(', ');
+    const order = ['defaults', ...modifiers.map((m) => layerName(m.name))].join(', ');
     const layer = enclosingLayers(atRule).join('.');
     const root = raw(atRule.root());
     const layerOrders = orders.get(root) ?? new Map<string, string>();
@@ -1307,7 +1307,7 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
         const [, name, params = ''] = /^@(\S+)\s*(.*)$/.exec(spelling.atRule ?? '') ?? [];
         own.push(name ? { name, params, nodes: [rule] } : rule);
       }
-      blocks.push(...sublayer(modifier.name, own));
+      blocks.push(...sublayer(layerName(modifier.name), own));
     }
 
     // Resolved values are fixed per block: where two modifiers' blocks apply
@@ -2116,6 +2116,11 @@ function local(property: string): string {
 /** A name as a custom-property identifier: whitespace as `-`, anything an identifier cannot hold escaped. */
 function ident(name: string): string {
   return name.replace(/\s+/g, '-').replace(/[^\w\u0080-\uffff-]/g, (c) => `\\${c}`);
+}
+
+/** A name as a layer name, an identifier on its own: {@link ident}, with a leading digit escaped too (`2x` → `\32 x`). */
+function layerName(name: string): string {
+  return ident(name).replace(/^(-?)(\d)/, (_, dash: string, digit: string) => `${dash}\\3${digit} `);
 }
 
 /** The names of the `@layer`s a node sits in, outermost first. An anonymous layer adds none. */
