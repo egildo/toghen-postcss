@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import postcss from 'postcss';
+import postcss, { type ChildNode, type Rule } from 'postcss';
 import { DesignSystem, Collection, DesignToken, Resolver, type ResolverDocument } from '@toghen/lib';
 import toghenPlugin from '../src/index.js';
 
@@ -441,6 +441,97 @@ describe('onUnresolved, exercised on every branch', () => {
     // was not writable. Reporting this as «cannot resolve» sends the reader
     // hunting for a typo in a path that is correct.
     assert.match(result.warnings()[0].text, /Cannot write token "type\.body"/);
+  });
+});
+
+// A colour a theme changes, and a gradient, which has no CSS spelling. W3C structured shapes.
+const grey = (v: number) => ({ colorSpace: 'srgb', components: [v, v, v] });
+const STRUCTURED: ResolverDocument = {
+  version: '2025-11-01',
+  name: 'ds',
+  sets: {
+    base: {
+      sources: [
+        {
+          color: { $type: 'color', ink: { $value: grey(0.1) } },
+          fx: {
+            glow: {
+              $type: 'gradient',
+              $value: [
+                { color: '{color.ink}', position: 0 },
+                { color: grey(1), position: 1 },
+              ],
+            },
+          },
+        },
+      ],
+    },
+  },
+  modifiers: {
+    theme: {
+      default: 'light',
+      contexts: { light: [], dark: [{ color: { ink: { $value: grey(0.9) } } }] },
+      $extensions: { 'com.toghen': { css: { selector: "[data-theme='{context}']" } } },
+    },
+  },
+  resolutionOrder: [{ $ref: '#/sets/base' }, { $ref: '#/modifiers/theme' }],
+};
+
+describe('a failure is reported once, at its position', () => {
+  /** Each warning as its position and its sentence up to the library's or the class's text. */
+  async function said(css: string) {
+    const system = new Resolver(STRUCTURED).resolveContextsToDesignSystem();
+    const result = await postcss([toghenPlugin({ system })]).process(css, { from: 'in.css' });
+    return result.warnings().map((w) => `${w.line}:${w.column} ${w.text.replace(/: (?:Token|No CSS)[\s\S]*$/, '')}`);
+  }
+
+  it('in a declaration whose other read succeeded, which PostCSS visits again', async () => {
+    assert.deepEqual(await said('.y {\n  color: t(color.ink) t(nope);\n}'), ['2:3 [@toghen/postcss] Cannot resolve token "ds.nope"']);
+  });
+
+  it('in what @toghen declare writes, which is not read again', async () => {
+    assert.deepEqual(await said('.x {\n  @toghen declare ds.fx;\n}'), [
+      '2:3 [@toghen/postcss] Cannot write token "ds.fx.glow" (mode: light)',
+    ]);
+  });
+
+  it('in what @toghen contexts writes, once in each context it fails in', async () => {
+    assert.deepEqual(await said('@toghen contexts;'), [
+      '1:1 [@toghen/postcss] Cannot write token "ds.fx.glow" (mode: light)',
+      '1:1 [@toghen/postcss] Cannot write token "ds.fx.glow" (mode: dark)',
+    ]);
+  });
+});
+
+describe('what a directive writes carries its source', () => {
+  it('points every node at the directive it came from, so a source map points there too', async () => {
+    const system = new Resolver(STRUCTURED).resolveContextsToDesignSystem();
+    const css = '@toghen mixins;\n.card {\n  @toghen declare ds.color;\n}\n@layer tokens {\n  @toghen contexts ds.color;\n}\n';
+    const { root } = await postcss([toghenPlugin({ system })]).process(css, { from: 'in.css' });
+    const unplaced: string[] = [];
+    root.walk((node) => {
+      if (!node.source?.start || !node.source.input.file?.endsWith('in.css')) unplaced.push(node.toString().slice(0, 40));
+    });
+    assert.deepEqual(unplaced, []);
+    const lineOf = (found: (node: ChildNode) => boolean) => {
+      let line: number | undefined;
+      root.walk((node) => {
+        if (line === undefined && found(node)) line = node.source?.start?.line;
+      });
+      return line;
+    };
+    assert.equal(
+      lineOf((n) => n.type === 'atrule' && n.params === '--when-theme-dark'),
+      1,
+    );
+    assert.equal(
+      lineOf((n) => n.type === 'decl' && (n.parent as Rule).selector === '.card'),
+      3,
+    );
+    assert.equal(
+      lineOf((n) => n.type === 'rule' && n.selector === "[data-theme='dark']"),
+      6,
+    );
   });
 });
 

@@ -31,6 +31,7 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
     AtRule: {
       toghen(atRule, { result }) { /* @toghen contexts | mixins | declare; anything else is reported and left in place */ },
       t(atRule, { result }) { /* the same, short form */ },
+      '*'(atRule, { result }) { /* a t() in any other at-rule's parameters: reported, never read */ },
     },
   };
 }
@@ -41,19 +42,20 @@ The `Rule` visitor reads a selector only to report the retired ones. Any other s
 
 ### Directive handling
 
-A call is found in a declaration value with one pattern, long and short form alike, only where a function name can start:
+A call is found in a declaration value with one pattern, long and short form alike, only where a function name can start. A string and an unquoted `url()` are matched first and whole, so a `t(` inside one is text, as `url("img/t(1).png")` is in CSS:
 
 ```regex
-/(?<![\w-])(?:toghen|t)\(\s*([^,)]+?)(?:\s*,\s*([^)]+?))?\s*\)/g
+/("(?:[^"\\]|\\[\s\S])*"?|'(?:[^'\\]|\\[\s\S])*'?|(?<![\w-])[uU][rR][lL]\((?!\s*["'])[^)]*\)?)|(?<![\w-])(?:toghen|t)\(\s*([^,)]+?)(?:\s*,\s*([^)]+?))?\s*\)/g
 ```
 
 **Capture groups:**
-1. `path`: the token path, with ` as value` after it when given (e.g., `colors.primary.blue as value`)
-2. `mode`: optional context (e.g., `theme=dark`)
+1. a string or an unquoted `url()`, left as written
+2. `path`: the token path, with ` as value` after it when given (e.g., `colors.primary.blue as value`)
+3. `mode`: optional context (e.g., `theme=dark`)
 
 Each match goes through one function, `read()`. It resolves the path, takes the context from the call or the default, and prints the value in the form the position and `as value` decide: a literal, a `var()` of the property, or, under `references: 'var'`, a `var()` of the first hop. `system.resolveValue()` is one step of it, never the whole.
 
-Three at-rules are directives: `@toghen contexts`, `@toghen mixins` and `@toghen declare`. Any other `@toghen` at-rule is reported with one sentence naming its replacement, and stays in place.
+Four at-rules are directives: `@toghen contexts`, `@toghen mixins`, `@toghen spellings` and `@toghen declare`. Any other `@toghen` at-rule is reported with one sentence naming its replacement, and stays in place. A directive is replaced by what it writes, and every node it writes carries the directive's `source`, so a warning about it and a source map both point at the directive. What it writes is output: the plugin does not read it again.
 
 ### Short forms
 
@@ -229,7 +231,7 @@ appears in code. The directive's grammar is in
 [reference.md](./reference.md#toghen-contexts).
 It is refused inside a rule, since the contexts are rules themselves.
 
-**A modifier with no blocks.** A modifier written with `light-dark()` (lib's `getLightDark`) has no selector for a block to sit under: the browser chooses the side from the used `color-scheme`, which the app sets. Each token it varies is one `light-dark(a, b)` in the defaults, so only colours can be paired, and a token another modifier's block also varies would lose its pair to that block, which is an error (a pair per block would lift it). It keeps its name in the layer order, so an order shared across directives does not change. It has no mixin and no custom selector, since CSS cannot ask whether the used scheme is dark. See decisions.md, *A two-context colour modifier written with `light-dark()`*.
+**A modifier with no blocks.** A modifier written with `light-dark()` (lib's `getLightDark`) has no selector for a block to sit under: the browser chooses the side from the used `color-scheme`, which the app sets. Each token it varies is one `light-dark(a, b)` in the defaults, so only colours can be paired, and a token another modifier's block also varies would lose its pair to that block, which is an error (a pair per block would lift it). It keeps its name in the layer order, so an order shared across directives does not change. It has no mixin and no custom selector, since CSS cannot ask whether the used scheme is dark. A pair is never registered with `@property`: a registered `<color>` computes `light-dark()` on the element that declares it, and its descendants inherit that one colour, so `color-scheme` set on a subtree would not switch it. See decisions.md, *A two-context colour modifier written with `light-dark()`*.
 
 **Why the blocks are complete.** A block that held only the tokens that differ from the defaults could not be placed by the plugin, which cannot see how selectors nest. A light island inside a dark panel needs the tokens the panel changed set back, and only the author knows that nesting. Each block therefore restates all that its modifier varies, so any element anywhere can set any context and be right, with no analysis of nesting and nothing for the author to say. The price is a few duplicated lines per modifier. It also leaves a scope wrapper (a directive that wraps rules and infers `from`) nothing to infer.
 
@@ -503,7 +505,7 @@ Eight issues from the second consumer, filed after the model landed. Read togeth
 - **One pipeline** (*built*). `postcss([toghen({ system }), postcssMixins()])` left every `@apply` unexpanded. The polyfill does all its work in its `Once` hook, and PostCSS runs every plugin's `Once` before any plugin's node visitors, so the polyfill read the stylesheet before Toghen's `AtRule` visitor had written a mixin. The plugin now writes the output of `@toghen mixins` (and `@t mixins`) in its own `Once`, which runs before the polyfill's because Toghen is listed first. Every other directive and `t()` stay in the visitors. Listed after the polyfill, Toghen still writes its mixins, and nothing expands them; the guide says the order. *Proof:* every test in `parts.test.ts` and `mixins.test.ts` that expands through the polyfill runs in one pipeline, and one test shows the two-pass form gives the same CSS. *Not chosen:* documenting two passes as the way. It works, but it re-parses Toghen's output, which is also where the trailing space below most likely comes from.
 - **A trailing space in a copied custom property** (*built: a test only*). The consumer saw `--button-color: var(--t-text) ;` after the polyfill. Not reproduced here: neither Toghen's nodes nor the polyfill's copies carry one. PostCSS keeps the whitespace before a `;` or `}` in a custom property's value when it parses text, so a re-parse of formatted output can add it. One pipeline removes the re-parse. *Proof:* one test runs a formatted stylesheet through one pipeline and asserts that no custom property's value ends in whitespace. If the consumer still sees it, the issue asks for the input.
 - **A mixin name written twice is an error** (*built*). Paths map to names with the custom-property rule, which is not injective: `fact.strip` and `fact-strip` are both `--fact-strip`. The polyfill then drops both definitions and leaves `@apply --fact-strip;` unexpanded, silently. `@toghen mixins` collects the name of every mixin it writes and, when two paths give one name, reports an error naming both, whatever `onUnresolved` says: `[@toghen/postcss] "fact.strip" and "fact-strip" are both written as the mixin --fact-strip. Rename one of them, or give propertyName an injective rule.` It writes neither definition. The `--when-<modifier>-<context>` mixins count, so a group named `when-theme-dark` collides with that context's mixin. *Why always an error:* the CSS Mixins draft (8 October 2026) gives two `@mixin` rules of one name the cascade's answer, the later one in a layer wins, as two declarations of one property. The ruling keeps the error anyway: a name written twice is never what the author meant, and today's polyfill breaks both. *Not chosen:* a warning under `onUnresolved`, as for two properties of one name.
-- **A read's fallback follows `references`** (*built*). `t(path)` and every mixin body write `var(--name, fallback)`. The fallback was always the literal of the default context. It is now the token's value as `references` writes it: the literal under `'resolve'` (unchanged), and under `'var'` the reference as a `var()` of its first hop, as `@toghen contexts` writes the token's own declaration. `t(hue.marigold.soft.bg)`, where the token is `{prism.orange.100}`, writes `var(--hue-marigold-soft-bg, var(--prism-orange-100))` under `'var'`. A token whose value is no reference writes its literal either way. *Why:* a group that is only read, never put into `@toghen contexts`, has properties nothing declares; with a literal fallback it rendered, but lost the palette step and its theming. Toghen cannot see which stylesheet declares what, so it cannot warn. Under `'var'` the author has already accepted that a referenced token is declared. *Not chosen:* the whole chain ending in the literal (`var(--a, var(--b, #fce7d8))`), which never breaks but lengthens every read by one level per alias; a warning, which Toghen has no way to give. *Proof:* tests in the W3C structured shapes under both settings, and the plugin's own stylesheet rebuilt with no `[object Object]` and no unresolved `toghen(`.
+- **A read's fallback follows `references`** (*built*). `t(path)` and every mixin body write `var(--name, fallback)`. The fallback was always the literal of the default context. It is now the token's value as `references` writes it: the literal under `'resolve'` (unchanged), and under `'var'` the reference as a `var()` of its first hop, as `@toghen contexts` writes the token's own declaration. `t(hue.soft.bg)`, where the token is `{palette.orange.100}`, writes `var(--hue-soft-bg, var(--palette-orange-100))` under `'var'`. A token whose value is no reference writes its literal either way. *Why:* a group that is only read, never put into `@toghen contexts`, has properties nothing declares; with a literal fallback it rendered, but lost the palette step and its theming. Toghen cannot see which stylesheet declares what, so it cannot warn. Under `'var'` the author has already accepted that a referenced token is declared. *Not chosen:* the whole chain ending in the literal (`var(--a, var(--b, #fce7d8))`), which never breaks but lengthens every read by one level per alias; a warning, which Toghen has no way to give. *Proof:* tests in the W3C structured shapes under both settings, and the plugin's own stylesheet rebuilt with no `[object Object]` and no unresolved `toghen(`.
 - **An error in one group stays in that group** (*built*). A vocabulary on the document root reads every group as possible parts, so a lookup table whose path happens to nest two values of one axis (`hue.plain.solid`, both `variant` values) made lib's `partsOf` throw, and the whole `@toghen mixins` stopped. The directive now writes each top-level group on its own: an error inside one is reported through `onUnresolved` naming the group and lib's sentence, that group's mixins are left out, and every other group is written. `[@toghen/postcss] Cannot write the mixins of "hue": Path 'hue.plain.solid.bg' nests two parts of axis 'variant': 'plain' and 'solid'. Give the group "com.toghen": { "css": { "parts": false } }, or rename a key.` The lib half, `parts: false`, is in [lib's specs](https://codeberg.org/Toghen/lib/src/branch/main/specs.md#worlds-and-parts).
 - **`@contents` between the rest and the parts** (*built*). A container's setting that must beat a component's rest and lose to its parts had no place: written after `@apply`, it lands after the nested part rules. CSS Mixins already has the answer: a mixin marks a place with `@contents`, and a block given to `@apply` lands there. A group's mixin writes `@contents` after its own declarations and before its parts:
 
@@ -613,14 +615,17 @@ src/
 └── index.ts                      # Plugin implementation (single file)
 
 test/
-├── example/                      # The running example's tokens and resolver (inputs)
 ├── example-output/               # Golden outputs of the running example
-├── example.test.ts               # The golden outputs, checked byte for byte
+├── example.test.ts               # The running example, read from @toghen/lib/example/; the golden outputs, byte for byte
 ├── fixture-composites.ts         # The shared synthetic document, in the W3C structured shapes
+├── cascade.ts                    # a cascade just big enough for one component, for the tests that ask what an element gets
 ├── chain.test.ts                 # bind: 'chain', rule by rule
+├── computed-values.test.ts       # values the core computes, written under either references setting
+├── consumer-needs.test.ts        # css.write: false, and a mixin that mixes source files
 ├── contexts.test.ts              # @toghen contexts, flat and layered
 ├── descriptions.test.ts          # descriptions: 'comment'
 ├── equivalence.test.ts           # a component's mixins and its plain rules, in a simulated cascade
+├── fallback.test.ts              # a read's fallback follows references
 ├── family-quoting.test.ts        # a family name is quoted when it has a space
 ├── fixes.test.ts                 # regressions, one test each: font lists, layer order, composites: 'shorthand'
 ├── font-shorthand.test.ts        # typography: 'font'
@@ -628,14 +633,22 @@ test/
 ├── keywords-and-members.test.ts  # colour keywords, typography members, a token in one context only
 ├── layers.test.ts                # @toghen contexts in a layer, and t() in any layer
 ├── letter-spacing.test.ts        # letterSpacing tokens
+├── light-dark.test.ts            # a modifier written with light-dark()
 ├── members.test.ts               # member properties through declare, contexts and reads
 ├── mixins.test.ts                # @toghen mixins: groups, typography, --when- mixins, placement
 ├── names.test.ts                 # propertyName, and two paths with one name
+├── nested.test.ts                # a nested instance starts again from its rest, and @contents
 ├── parts.test.ts                 # a group's mixin nests its parts, a part's mixin, the expansion
-├── plugin.test.ts                # t() values, composite values, error modes
+├── plugin.test.ts                # t() values, composite values, error modes, positions
+├── precedence.test.ts            # the cascade agrees with the core on which part applies
 ├── property.test.ts              # @property with registerProperties, and reads of the property
-├── short-forms.test.ts           # t() and @t
+├── short-forms.test.ts           # t() and @t, strings and url(), and an at-rule's parameters
+├── spellings.test.ts             # @toghen spellings
 └── types.test.ts                 # what valueToCss writes and refuses, each DTCG type
+
+measurements/                     # Browser checks of the CSS claims, see RESULTS.md
+scripts/
+└── check-purity.mjs              # The purity check, copied from house
 ```
 
 ---
@@ -646,8 +659,9 @@ test/
 - **Bundler:** tsup
 - **Test runner:** Node's test runner with tsx as its loader, `node --import tsx/esm --test`
 - **Commands:**
-  - `pnpm --filter @toghen/postcss build`
-  - `pnpm --filter @toghen/postcss test`
+  - `pnpm build`
+  - `pnpm test`
+  - `pnpm check`: Biome, the type check, the tests, the build and the purity check, the gate CI runs
 
 ---
 

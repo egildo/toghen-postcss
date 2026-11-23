@@ -18,10 +18,11 @@ const DENSITY = { selector: "[data-density='{context}']" };
 const ext = (css: Record<string, unknown>) => ({ $extensions: { 'com.toghen': { css } } });
 
 // `theme` is a pair written with light-dark() (contexts day / night, so the names are read from the field);
-// `density` is spelled by attribute. `tweak` adds to the night context, `compact` to density's.
+// `density` is spelled by attribute. `tweak` adds to the night context, `compact` to density's, `extra` to the base.
 function doc(
   tweak: Record<string, unknown> = {},
   compact: Record<string, unknown> = { space: { gap: { $value: px(4) } } },
+  extra: Record<string, unknown> = {},
 ): ResolverDocument {
   return {
     version: '2025-11-01',
@@ -44,6 +45,7 @@ function doc(
                 $value: { color: '{color.bg}', offsetX: px(0), offsetY: px(2), blur: px(4), spread: px(0) },
               },
             },
+            ...extra,
           },
         ],
       },
@@ -119,9 +121,29 @@ describe('a modifier written with light-dark()', () => {
     );
   });
 
+  it('names the type of the token a member belongs to, when it refuses the member', async () => {
+    const text = (fontWeight: number) => ({ fontFamily: ['Inter', 'sans-serif'], fontSize: px(14), fontWeight, lineHeight: 1.25 });
+    const bold = doc({ type: { body: { $value: text(700) } } }, undefined, { type: { body: { $type: 'typography', $value: text(400) } } });
+    await assert.rejects(
+      run('@toghen contexts ds.type;', bold),
+      /Cannot write modifier 'theme' with light-dark\(\): 'ds\.type\.body\.fontWeight' is a typography member, and light-dark\(\) takes only colours\./,
+    );
+  });
+
   it('writes nothing for the modifier when the error is only a warning', async () => {
     const out = await run('@toghen contexts ds.space;', doc({ space: { gap: { $value: px(6) } } }), { onUnresolved: 'ignore' });
     assert.doesNotMatch(out, /light-dark/);
+  });
+
+  it('reports a token with a value on the dark side only, which no pair can hold, and writes the other pairs', async () => {
+    const glow = doc({ accent: { glow: { $type: 'color', $value: srgb(0.4) } } });
+    await assert.rejects(
+      run('@toghen contexts ds;', glow, { references: 'var' }),
+      /Cannot write 'ds\.accent\.glow' with light-dark\(\) for modifier 'theme': it has a value in context 'night' only, and light-dark\(\) takes one for each side\. Give it a value in 'day' too, or write the modifier with a selector or an at-rule\./,
+    );
+    const out = await run('@toghen contexts ds;', glow, { references: 'var', onUnresolved: 'ignore' });
+    assert.match(out, /--color-bg: light-dark\(#ffffff, #000000\)/);
+    assert.doesNotMatch(out, /--accent-glow/);
   });
 
   it('refuses a colour another modifier varies too, naming both and the token', async () => {
@@ -164,10 +186,12 @@ describe('a modifier written with light-dark()', () => {
     assert.match(out, /@custom-selector :--density-compact/);
   });
 
-  it('registers a paired colour with the default context literal as its initial value', async () => {
+  it('registers no paired colour, so color-scheme on a subtree still switches it, and registers a plain one', async () => {
+    // A property registered as <color> computes light-dark() where it is declared, and a descendant inherits that one colour.
     const out = await run('@toghen contexts ds.color;', doc(), { registerProperties: true });
-    assert.match(out, /@property --color-bg \{ syntax: '<color>'; inherits: true; initial-value: #ffffff \}/);
+    assert.doesNotMatch(out, /@property --color-(?:bg|line|surface) /);
     assert.match(out, /--color-bg: light-dark\(#ffffff, #000000\)/);
+    assert.match(out, /@property --color-same \{ syntax: '<color>'; inherits: true; initial-value: #808080 \}/);
   });
 
   it('writes the modifier description before the first pair under descriptions: comment', async () => {

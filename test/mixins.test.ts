@@ -301,3 +301,46 @@ describe('@toghen mixins: a name written twice', () => {
     assert.ok(mixinNames(out.css).includes('--fact-strip') && mixinNames(out.css).includes('--fact-band'));
   });
 });
+
+describe('@toghen mixins: a member with no CSS spelling', () => {
+  // A gradient has no CSS spelling (its DTCG value carries no direction). One sits beside a colour in a group, and in its part.
+  const GRADIENT = {
+    $type: 'gradient',
+    $value: [
+      { color: INK, position: 0 },
+      { color: PAPER, position: 1 },
+    ],
+  };
+  const card = () =>
+    doc(
+      {},
+      {
+        card: {
+          $extensions: { 'com.toghen': { css: { parts: { state: { hover: ':hover' } } } } },
+          backgroundColor: { $type: 'color', $value: '{color.paper}' },
+          backgroundImage: GRADIENT,
+          hover: { backgroundColor: { $type: 'color', $value: '{color.ink}' }, backgroundImage: GRADIENT },
+        },
+      },
+    );
+  const shape = (path: string) =>
+    `[@toghen/postcss] Cannot write token "${path}": No CSS serialisation for a value of shape { color, position }.`;
+
+  it('is reported once, naming the token and its shape, and the rest of the mixin is written', async () => {
+    const out = await toghen('@toghen mixins;', {}, card());
+    assert.deepEqual(
+      out.warnings.map((w) => w.slice(0, w.indexOf('.', w.indexOf('shape')) + 1)),
+      [shape('ds.card.backgroundImage'), shape('ds.card.hover.backgroundImage')],
+    );
+    assert.match(
+      ruleOf(out.css, '--card') ?? '',
+      /background-color: var\(--_card-background-color, var\(--card-background-color, #ffffff\)\); @contents; &:where\(:hover\) \{ --_card-background-color: var\(--card-hover-background-color, #1a1a1a\) \}/,
+    );
+    assert.match(ruleOf(out.css, '--card-hover') ?? '', /--_card-background-color: var\(--card-hover-background-color, #1a1a1a\)/);
+    assert.doesNotMatch(out.css, /(?<!-)background-image:|--_card-background-image: var/);
+  });
+
+  it('stops the build under onUnresolved: throw', async () => {
+    await assert.rejects(toghen('@toghen mixins;', { onUnresolved: 'throw' }, card()), /Cannot write token "ds\.card\.backgroundImage"/);
+  });
+});

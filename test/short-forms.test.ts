@@ -74,6 +74,35 @@ describe('t() is toghen()', () => {
     assert.equal((await run(css)).css, 'a { width: my-toghen(ds.card.pad); height: xtoghen(ds.card.pad) }');
   });
 
+  it('leaves a string and a url() alone, under throw too, and reads a call beside one', async () => {
+    const css = [
+      'a { background: url("img/t(1).png"), URL(img/toghen(2).png); content: "see t(x)" \'it\\\'s toghen(y)\';',
+      'b: "t(" t(ds.card.pad); c: url(a.png) t(ds.card.pad) }',
+    ].join(' ');
+    assert.equal(
+      (await run(css)).css,
+      'a { background: url("img/t(1).png"), URL(img/toghen(2).png); content: "see t(x)" \'it\\\'s toghen(y)\'; b: "t(" var(--card-pad, 16px); c: url(a.png) var(--card-pad, 16px) }',
+    );
+  });
+
+  it("reports a read in an at-rule's parameters, which is never read, once each, and stops the build under throw", async () => {
+    const css =
+      '@import url("t(1).css"); @media (min-width: t(ds.card.pad)) { a { padding: t(ds.card.pad) } } @container (width > toghen(ds.card.pad)) { b { margin: 0 } }';
+    await assert.rejects(
+      run(css),
+      /Cannot read "t\(ds\.card\.pad\)" in "@media \(min-width: t\(ds\.card\.pad\)\)": t\(\) and toghen\(\) are read in declaration values, not in an at-rule's parameters\. Write the value itself; the at-rule is left as written\./,
+    );
+    const out = await run(css, { onUnresolved: 'warn' });
+    assert.equal(
+      out.css,
+      '@import url("t(1).css"); @media (min-width: t(ds.card.pad)) { a { padding: var(--card-pad, 16px) } } @container (width > toghen(ds.card.pad)) { b { margin: 0 } }',
+    );
+    assert.deepEqual(
+      out.warnings.map((w) => /Cannot read "[^"]+" in "@\w+/.exec(w)?.[0]),
+      ['Cannot read "t(ds.card.pad)" in "@media', 'Cannot read "toghen(ds.card.pad)" in "@container'],
+    );
+  });
+
   it('fails like toghen() does, and leaves the call as written', async () => {
     const out = await run('a { color: t(ds.card.nope) }', { onUnresolved: 'warn' });
     assert.equal(out.css, 'a { color: t(ds.card.nope) }');

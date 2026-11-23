@@ -1,4 +1,4 @@
-import type { AtRule, ChildProps, Declaration, Node, Plugin, Result } from 'postcss';
+import type { AtRule, ChildNode, ChildProps, Declaration, Node, Plugin, Result } from 'postcss';
 import {
   type DesignSystem,
   PathNotFoundError,
@@ -154,8 +154,7 @@ export class UnserializableValueError extends Error {
         `\`gradient\` (the DTCG value carries stops but no direction) and ` +
         `\`typography\` (a block of several CSS properties, not one value: ` +
         `write its members instead, \`toghen(path.fontSize)\`, \`toghen(path.lineHeight)\` and so on, ` +
-        `or set \`typography: 'font'\`), and a \`strokeStyle\` object (\`dashArray\`, \`lineCap\`: CSS has no dash pattern). ` +
-        `See toghen-postcss/specs.md §Composite types.`,
+        `or set \`typography: 'font'\`), and a \`strokeStyle\` object (\`dashArray\`, \`lineCap\`: CSS has no dash pattern).`,
     );
     this.name = 'UnserializableValueError';
     this.value = value;
@@ -421,12 +420,16 @@ export interface ToghenPluginOptions {
  * inside a declaration value. The name is matched whole: `t(` counts only where a CSS
  * function name can start, never after a letter, a digit, `-` or `_`, so `inset(`,
  * `rect(`, `repeat(` and `format(` are left alone. `toghen(` follows the same boundary.
+ * A string and an unquoted `url()` are matched first, whole, so a `t(` inside one is text:
+ * `url("img/t(1).png")` is no call.
  *
  * Capture groups:
- *   1 — token path, with `as value` after it if there is one (e.g. `colors.primary.blue as value`)
- *   2 — mode        (e.g. `dark`, optional)
+ *   1 — a string or an unquoted `url()`, left as it is
+ *   2 — token path, with `as value` after it if there is one (e.g. `colors.primary.blue as value`)
+ *   3 — mode        (e.g. `dark`, optional)
  */
-const TOGHEN_RE = /(?<![\w-])(?:toghen|t)\(\s*([^,)]+?)(?:\s*,\s*([^)]+?))?\s*\)/g;
+const TOGHEN_RE =
+  /("(?:[^"\\]|\\[\s\S])*"?|'(?:[^'\\]|\\[\s\S])*'?|(?<![\w-])[uU][rR][lL]\((?!\s*["'])[^)]*\)?)|(?<![\w-])(?:toghen|t)\(\s*([^,)]+?)(?:\s*,\s*([^)]+?))?\s*\)/g;
 const MIXINS_DIRECTIVE = /^(?:mixins|spellings)(?:\s|$)/;
 const RETIRED_SELECTOR = /:(?:toghen|t)\(/;
 const HAS_CALL = /(?<![\w-])(?:toghen|t)\(/;
@@ -487,6 +490,8 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
   const orders = new WeakMap<Node, Map<string, string>>();
   /** What each directive has reported, by message: a context block asks again for every context. */
   const reported = new WeakMap<Node, Set<string>>();
+  /** The value the plugin wrote at a declaration, rewritten or written by a directive: what it wrote is output, not input. */
+  const wrote = new WeakMap<Node, string>();
   /** The custom properties a part re-points, by the lookup of the token at rest (see {@link repointed}). */
   let repoints: Map<string, { twin: string; component: string }> | undefined;
 
@@ -546,14 +551,28 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
      * mistyped one token path got a build that stopped and never said why.
      */
     Declaration(decl, { result }) {
-      if (!HAS_CALL.test(decl.value)) return;
+      // PostCSS visits a declaration again once its value changes, and visits each one a directive writes: neither is read twice.
+      if (wrote.get(raw(decl)) === decl.value || !HAS_CALL.test(decl.value)) return;
       decl.value = directives(decl.value, decl, result);
+      wrote.set(raw(decl), decl.value);
     },
 
     /** `@toghen …;` and its alias `@t …;`: one handler. */
     AtRule: {
       toghen: visited,
       t: visited,
+      /** A read in any other at-rule's parameters (`@media (min-width: t(bp.md))`) is never read: it is reported, so 'throw' stops the build. */
+      '*'(atRule, { result }) {
+        if (atRule.name === 'toghen' || atRule.name === 't') return;
+        const call = [...atRule.params.matchAll(TOGHEN_RE)].find((m) => m[1] === undefined)?.[0];
+        // Once: PostCSS visits the at-rule again when a declaration inside it changes.
+        if (call)
+          reportOnce(
+            atRule,
+            result,
+            `[@toghen/postcss] Cannot read "${call}" in "@${atRule.name} ${atRule.params}": t() and toghen() are read in declaration values, not in an at-rule's parameters. Write the value itself; the at-rule is left as written.`,
+          );
+      },
     },
   };
 
@@ -579,7 +598,7 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
         outcome = failure(path, undefined, err, word);
       }
       if (typeof outcome === 'string') report(atRule, result, outcome);
-      else atRule.replaceWith(...outcome);
+      else replace(atRule, outcome);
       return;
     }
     if (!/^declare\s+/.test(params)) {
@@ -607,7 +626,25 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
 
     if (typeof outcome === 'string') report(atRule, result, outcome);
     else if (outcome.length === 0) atRule.remove();
-    else atRule.replaceWith(...outcome);
+    else replace(atRule, outcome);
+  }
+
+  /**
+   * Writes a directive's output in its place. Every node written carries the directive's `source`, so a warning and a
+   * source map point at the directive, and each declaration is marked as written.
+   */
+  function replace(atRule: AtRule, nodes: ChildProps[]): void {
+    const parent = atRule.parent!;
+    const at = parent.index(atRule);
+    atRule.replaceWith(...nodes);
+    const mark = (node: ChildNode) => {
+      raw(node).source = atRule.source;
+      if (node.type === 'decl') wrote.set(raw(node), node.value);
+    };
+    for (const node of parent.nodes.slice(at, at + nodes.length)) {
+      mark(node);
+      if (node.type !== 'decl' && node.type !== 'comment') node.walk(mark);
+    }
   }
 
   /** A path with no form after it: `contexts`, `mixins` and `declare` take none. */
@@ -657,7 +694,8 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
    * was.
    */
   function directives(value: string, node: Node, result: Result): string {
-    return value.replace(TOGHEN_RE, (original, written: string, rawMode?: string) => {
+    return value.replace(TOGHEN_RE, (original, text: string | undefined, written: string, rawMode?: string) => {
+      if (text !== undefined) return original;
       let path = written.trim();
       const given = rawMode?.trim();
       const mode = given ?? defaultMode;
@@ -761,7 +799,8 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
       const literal = write(path, mode, false);
       return references === 'var' ? write(path, mode, true) : literal;
     } catch (err) {
-      report(node, result, failure(path, mode, err));
+      // The defaults and a context's block may ask for the same mode.
+      reportOnce(node, result, failure(path, mode, err));
       return `toghen(${path}, ${mode})`;
     }
   }
@@ -1141,7 +1180,7 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
 
     // CSS keeps a layer's first order statement, so a second that differs would be ignored without a word.
     // One that is the same changes nothing, and is written again, so each directive's output stands alone.
-    const order = ['defaults', ...modifiers.map((m) => m.name)].join(', ');
+    const order = ['defaults', ...modifiers.map((m) => layerName(m.name))].join(', ');
     const layer = enclosingLayers(atRule).join('.');
     const root = raw(atRule.root());
     const layerOrders = orders.get(root) ?? new Map<string, string>();
@@ -1197,12 +1236,30 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
       const other = light.find((w) => system.resolveToken(w.token ?? w.who!, lightMode)?.$type !== 'color');
       if (other) {
         const lookup = other.token ?? other.who!;
+        // A member is named by the type of the token it belongs to: lib gives a member no type of its own.
+        const { owner } = ownerOf(lookup);
+        const type = system.resolveToken(owner, lightMode)?.$type ?? 'value';
         report(
           atRule,
           result,
-          `[@toghen/postcss] Cannot write modifier '${modifier.name}' with light-dark(): '${lookup}' is a ${system.resolveToken(lookup, lightMode)?.$type ?? 'value'}, and light-dark() takes only colours. Write the modifier with a selector or an at-rule, or vary only colours in it.`,
+          `[@toghen/postcss] Cannot write modifier '${modifier.name}' with light-dark(): '${lookup}' is a ${owner === lookup ? type : `${type} member`}, and light-dark() takes only colours. Write the modifier with a selector or an at-rule, or vary only colours in it.`,
         );
         continue;
+      }
+      // A token with a value on one side only has no pair. On the default's side it is in the defaults, as a block would leave it; on the other it would be lost.
+      const lost = new Map<string, string>();
+      for (const [side, context] of [
+        [lit, pair.light],
+        [dim, pair.dark],
+      ] as const) {
+        for (const w of side) if (!inRoot.some((r) => r.prop === w.prop)) lost.set(ownerOf(w.who!).owner, context);
+      }
+      for (const [lookup, context] of lost) {
+        report(
+          atRule,
+          result,
+          `[@toghen/postcss] Cannot write '${lookup}' with light-dark() for modifier '${modifier.name}': it has a value in context '${context}' only, and light-dark() takes one for each side. Give it a value in '${context === pair.light ? pair.dark : pair.light}' too, or write the modifier with a selector or an at-rule.`,
+        );
       }
       for (const w of light) paired.set(w.prop, modifier.name);
       inRoot = inRoot.map((w) => {
@@ -1213,7 +1270,9 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
       if (descriptions === 'comment' && modifier.description && light.length > 0) introductions.push(comment(modifier.description));
     }
     const everything: Written[] = [...inRoot];
-    blocks.push(...registrations(inRoot, defaults));
+    // A pair is not registered: a registered <color> computes light-dark() where it is declared, so a subtree's color-scheme would not switch it.
+    const unpaired = inRoot.filter((w) => !paired.has(w.prop));
+    blocks.push(...registrations(unpaired, defaults));
     blocks.push(
       ...sublayer('defaults', [
         { selector: rootSelector, nodes: [...introductions, ...commented(inRoot, path, defaults, undefined)], raws: { between: ' ' } },
@@ -1305,7 +1364,7 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
         const [, name, params = ''] = /^@(\S+)\s*(.*)$/.exec(spelling.atRule ?? '') ?? [];
         own.push(name ? { name, params, nodes: [rule] } : rule);
       }
-      blocks.push(...sublayer(modifier.name, own));
+      blocks.push(...sublayer(layerName(modifier.name), own));
     }
 
     // Resolved values are fixed per block: where two modifiers' blocks apply
@@ -1396,13 +1455,16 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
     const rel = (lookup: string) => lookup.slice(collection.name.length + 1);
     const full = (at: string) => `${collection.name}.${at}`;
     const relTokens = lookups.map(rel);
-    const body = (entries: Entry[]): ChildProps[] | undefined => {
-      try {
-        return entries.map((e) => ({ prop: e.prop, value: read(reading, e.lookup, undefined, undefined, e) }));
-      } catch {
-        return undefined;
-      }
-    };
+    // A member that cannot be written is reported and left out, and the rest of the mixin is written.
+    const body = (entries: Entry[]): ChildProps[] =>
+      entries.flatMap((e) => {
+        try {
+          return [{ prop: e.prop, value: read(reading, e.lookup, undefined, undefined, e) }];
+        } catch (err) {
+          reportOnce(atRule, result, failure(e.lookup, defaultMode, err));
+          return [];
+        }
+      });
 
     // A group is a part when its key is a value of an axis in the vocabulary at its parent group (lib's `partAt`).
     const partAt = (g: string) => collection.partAt(g, mode) ?? undefined;
@@ -1468,8 +1530,9 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
           if (isProperty(prop) && !unwritten(lookup, mode))
             out.push({ prop, value: read(reading, lookup, undefined, undefined, { prop, lookup }) });
         }
-      } catch {
-        // A token that cannot be written here is left out, as in a group.
+      } catch (err) {
+        // A token that cannot be written here is reported and left out, as in a group.
+        reportOnce(atRule, result, failure(lookup, defaultMode, err));
       }
       return out;
     };
@@ -1571,7 +1634,7 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
         }
         if (system.resolveToken(lookup, mode)?.$type === 'typography') {
           const nodes = body(typographyEntries(lookup, mode));
-          if (nodes && nodes.length > 0) put(top, propertyName(lookup), rel(lookup), nodes);
+          if (nodes.length > 0) put(top, propertyName(lookup), rel(lookup), nodes);
         }
       } catch (err) {
         if ((err as Error)?.name === 'CssSyntaxError') throw err;
@@ -2110,6 +2173,11 @@ function local(property: string): string {
 /** A name as a custom-property identifier: whitespace as `-`, anything an identifier cannot hold escaped. */
 function ident(name: string): string {
   return name.replace(/\s+/g, '-').replace(/[^\w\u0080-\uffff-]/g, (c) => `\\${c}`);
+}
+
+/** A name as a layer name, an identifier on its own: {@link ident}, with a leading digit escaped too (`2x` → `\32 x`). */
+function layerName(name: string): string {
+  return ident(name).replace(/^(-?)(\d)/, (_, dash: string, digit: string) => `${dash}\\3${digit} `);
 }
 
 /** The names of the `@layer`s a node sits in, outermost first. An anonymous layer adds none. */

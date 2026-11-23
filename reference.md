@@ -155,7 +155,7 @@ With `true`, `@toghen contexts` writes an `@property` rule before the defaults f
 | `duration` | `<time>` |
 | `number` | `<number>` |
 
-Each rule has `inherits: true` and an `initial-value` of the default's literal. A dimension in `rem` or `em` gets no rule. Chain links and chain flags never get one. The reason is that a registered property always has a value, so a `var()` never takes its fallback, and `initial` gives the registered value instead of the invalid value that chains rely on.
+Each rule has `inherits: true` and an `initial-value` of the default's literal. A dimension in `rem` or `em` gets no rule. Chain links and chain flags never get one. The reason is that a registered property always has a value, so a `var()` never takes its fallback, and `initial` gives the registered value instead of the invalid value that chains rely on. A colour written as a `light-dark()` pair gets none either: a property registered as `<color>` computes the pair where it is declared, so `color-scheme` on a descendant would no longer switch it.
 
 ```css
 @property --surface-raised {
@@ -185,7 +185,7 @@ With `'chain'`, `@toghen contexts` writes a token that more than one modifier ch
 
 ## Reading a token: `t()` and `toghen()`
 
-A read appears in a declaration value. Its forms:
+A read appears in a declaration value, outside a string and a `url()`: `url("img/t(1).png")` holds no read. Its forms:
 
 | Written | Writes | Literal in |
 |---|---|---|
@@ -230,9 +230,9 @@ Placed at the top of the stylesheet, or inside a named `@layer`. Inside a rule i
 
 A modifier's spelling comes from its `$extensions["com.toghen"].css` member: a `selector` with `{context}` in it, or an `atRule`, or one of those per context. See [lib's `getContextSelector`](https://codeberg.org/Toghen/lib/src/branch/main/reference.md#getcontextselectormodifier-context-contextselector--undefined).
 
-Inside a named layer, the plugin writes an order statement first, naming the layers `defaults`, then each modifier's name, in resolution order. Each block then sits in a sublayer named for its modifier, and the defaults in the `defaults` sublayer. CSS keeps the first order statement of a layer, so a second `@toghen contexts` in the same layer must give the same order. An anonymous layer is written flat, like the top level.
+Inside a named layer, the plugin writes an order statement first, naming the layers `defaults`, then each modifier's name, in resolution order. Each block then sits in a sublayer named for its modifier, and the defaults in the `defaults` sublayer. A modifier's name that is no identifier is escaped, as in a mixin's name, and a leading digit too: `a.b` is written `a\.b`, and `2x` is written `\32 x`. CSS keeps the first order statement of a layer, so a second `@toghen contexts` in the same layer must give the same order. An anonymous layer is written flat, like the top level.
 
-A modifier written with `light-dark()` (a `lightDark` member in its CSS spelling; see [lib's `getLightDark`](https://codeberg.org/Toghen/lib/src/branch/main/reference.md#getlightdarkmodifier-lightdark--undefined) for the shape) gets no block, no sublayer and no error for a missing spelling. Each token it varies is written in the defaults as `light-dark(<value in the light context>, <value in the dark context>)`; a token that is the same text in both stays plain. Only colours can be paired. The plugin writes no `color-scheme`: the app sets it, and without one the light side shows. Under `descriptions: 'comment'` the modifier's description is written before the first pair. The modifier keeps its place in the layer order statement. A token it varies must not be varied by another modifier's block, and `bind: 'chain'` is refused with it; see [Messages for contexts](#messages-for-contexts).
+A modifier written with `light-dark()` (a `lightDark` member in its CSS spelling; see [lib's `getLightDark`](https://codeberg.org/Toghen/lib/src/branch/main/reference.md#getlightdarkmodifier-lightdark--undefined) for the shape) gets no block, no sublayer and no error for a missing spelling. Each token it varies is written in the defaults as `light-dark(<value in the light context>, <value in the dark context>)`; a token that is the same text in both stays plain. A token with a value in one context only has no pair: in the default context it is written plain, as a block would leave it, and in the other it is reported. Only colours can be paired. The plugin writes no `color-scheme`: the app sets it, and without one the light side shows. Under `descriptions: 'comment'` the modifier's description is written before the first pair. The modifier keeps its place in the layer order statement. A token it varies must not be varied by another modifier's block, and `bind: 'chain'` is refused with it; see [Messages for contexts](#messages-for-contexts).
 
 Where two modifiers change one property and `references` is `'resolve'`, the plugin warns that the later block's value wins whole. With `'var'`, the browser combines the two.
 
@@ -422,7 +422,9 @@ The option messages come once per stylesheet. A `:toghen()` selector rule is lef
 
 Plugin messages start with `[@toghen/postcss]`. Lib's text and the class text follow a colon inside them. Names in angle brackets stand for what is in the reader's file. Messages come through `onUnresolved` unless the table says it is always a warning. The messages for retired forms are in [Retired forms](#retired-forms).
 
-A mixin body or a typography mixin that cannot be read is left out with no message. A group with one direct token that has no CSS spelling gets no mixin at all.
+A failure is reported once, at the declaration or directive that holds it. A directive reports a token once for each mode it cannot write it in; what the directive wrote is not read again.
+
+A token that a mixin cannot read, such as a gradient in a group, is reported once with its message for reads, and left out of the mixin. The rest of the mixin is written.
 
 ### Messages for reads
 
@@ -432,11 +434,12 @@ A mixin body or a typography mixin that cannot be read is left out with no messa
 | `Cannot write token "<path>" (mode: <mode>): No CSS serialisation for a value of shape <keys>. …` | The token exists, and its value has no CSS spelling. Typically a typography token read whole under `'block'`, a gradient, or a stroke style. | Read its members (`t(<path>.fontSize)`), or set `typography: 'font'`. The full text of the class message is below. |
 | `Cannot read "<path>": as takes a form: the only form is value.` | `as` is followed by nothing. | Write `as value`, or remove `as`. |
 | `Cannot read "<path>": "as <form>" is retired or unknown: the only form is value.` | `as` is followed by a form other than `value`. | Write `as value`, or remove `as`. |
+| `Cannot read "<call>" in "@<name> <params>": t() and toghen() are read in declaration values, not in an at-rule's parameters. Write the value itself; the at-rule is left as written.` | A `t()` or `toghen()` in the parameters of an at-rule, such as `@media (min-width: t(bp.md))`. Nothing reads it there, and a media query cannot read a custom property either. | Write the value in the at-rule. |
 
 The full text of the class message, which the plugin repeats after the colon for a value with no CSS spelling:
 
 ```text
-No CSS serialisation for a value of shape <keys>. Composite types the core resolves but this adapter cannot yet write are `gradient` (the DTCG value carries stops but no direction) and `typography` (a block of several CSS properties, not one value: write its members instead, `toghen(path.fontSize)`, `toghen(path.lineHeight)` and so on, or set `typography: 'font'`), and a `strokeStyle` object (`dashArray`, `lineCap`: CSS has no dash pattern). See toghen-postcss/specs.md §Composite types.
+No CSS serialisation for a value of shape <keys>. Composite types the core resolves but this adapter cannot yet write are `gradient` (the DTCG value carries stops but no direction) and `typography` (a block of several CSS properties, not one value: write its members instead, `toghen(path.fontSize)`, `toghen(path.lineHeight)` and so on, or set `typography: 'font'`), and a `strokeStyle` object (`dashArray`, `lineCap`: CSS has no dash pattern).
 ```
 
 ### Messages for forms
@@ -455,7 +458,8 @@ No CSS serialisation for a value of shape <keys>. Composite types the core resol
 | `Cannot write the contexts of "<path>" in layer '<layer>': its order would be "<order>", and the layer already has "<before>". CSS keeps the first order statement of a layer. Put the collections in different layers, or give them the same modifiers in the same order.` | A second `@toghen contexts` in the same layer gives another order. | Use a different layer, or the same modifiers in the same order. |
 | `Cannot write the contexts of modifier '<modifier>': contexts '<first>' and '<clash>' have the same CSS spelling, so neither block could be told from the other. Give each its own selector or at-rule.` | Two non-default contexts share a spelling. | Give each context its own selector or at-rule. |
 | `Cannot write context '<context>' of modifier '<modifier>': the resolver document gives it no CSS selector. Add $extensions["com.toghen"].css to the modifier.` | A context other than the default has no spelling. | Add the spelling to the modifier. |
-| `Cannot write modifier '<modifier>' with light-dark(): '<token>' is a <type>, and light-dark() takes only colours. Write the modifier with a selector or an at-rule, or vary only colours in it.` | A modifier written with `light-dark()` varies a token that is not a colour (in the text written: under `references: 'var'` a shadow that only reads a themed colour is the same on both sides and is no error). Nothing is written for that modifier. | Spell the modifier with a selector or an at-rule, or vary only colours in it. |
+| `Cannot write modifier '<modifier>' with light-dark(): '<token>' is a <type>, and light-dark() takes only colours. Write the modifier with a selector or an at-rule, or vary only colours in it.` | A modifier written with `light-dark()` varies a token that is not a colour (in the text written: under `references: 'var'` a shadow that only reads a themed colour is the same on both sides and is no error). A member is named by the type of its token, as `'ds.type.body.fontWeight' is a typography member`. Nothing is written for that modifier. | Spell the modifier with a selector or an at-rule, or vary only colours in it. |
+| `Cannot write '<token>' with light-dark() for modifier '<modifier>': it has a value in context '<context>' only, and light-dark() takes one for each side. Give it a value in '<other>' too, or write the modifier with a selector or an at-rule.` | A token of a modifier written with `light-dark()` has a value only in the context that is not the default, so the defaults cannot hold it. The token is left out; the other pairs are written. | Give the token a value in the other context, or spell the modifier with a selector or an at-rule. |
 | `Cannot write modifier '<modifier>' beside '<paired>': both vary '<token>', and the block of '<modifier>' would replace the light-dark() pair of '<paired>' with a plain value. Spell one of them with a selector or an at-rule, or vary different tokens in each.` | A token is varied by a `light-dark()` modifier and by another modifier's block. | Spell one of them with a selector or an at-rule, or vary different tokens in each. |
 | `Cannot chain modifier '<modifier>': it is written with light-dark(), which has no blocks to chain. Leave out bind: 'chain', or spell the modifier with a selector or an at-rule.` | `bind: 'chain'` and a modifier written with `light-dark()`. | Leave out `bind: 'chain'`, or spell the modifier with a selector or an at-rule. |
 | `Cannot write the contexts of "<path>": <lib message>` | Lib raised an error while writing the directive. | Read the lib message. |

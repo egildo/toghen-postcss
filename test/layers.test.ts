@@ -112,6 +112,17 @@ describe('@toghen contexts in a layer', () => {
     assert.doesNotMatch(out.css, /@layer calm \{|data-calm/);
   });
 
+  it('escapes a modifier name that is no identifier, so the layer is not dropped', async () => {
+    // `2x` starts with a digit and `a.b` holds a dot, which would make it a sublayer `b` of a layer `a`.
+    const on = (pad: number) => ({ default: 'off', contexts: { off: [], on: [{ card: { pad: { $value: px(pad) } } }] } });
+    const d = doc({ '2x': { ...on(4), ...ATTR('x') }, 'a.b': { ...on(2), ...ATTR('y') } });
+    d.resolutionOrder.push({ $ref: '#/modifiers/2x' }, { $ref: '#/modifiers/a.b' });
+    const out = await run('@layer tokens { @toghen contexts ds.card; }', d);
+    assert.match(out.css, /@layer defaults, theme, density, \\32 x, a\\\.b;/);
+    assert.match(out.css, /@layer \\32 x \{ \[data-x='off'\] \{ --card-pad: 16px \} \[data-x='on'\] \{ --card-pad: 4px \} \}/);
+    assert.match(out.css, /@layer a\\\.b \{ \[data-y='off'\] \{ --card-pad: 16px \} \[data-y='on'\] \{ --card-pad: 2px \} \}/);
+  });
+
   it('refuses a modifier named defaults, in a layer only', async () => {
     const d = doc({ defaults: { default: 'a', contexts: { a: [], b: [] }, ...ATTR('defaults') } });
     await assert.rejects(

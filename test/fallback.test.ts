@@ -18,15 +18,15 @@ function doc(): ResolverDocument {
       base: {
         sources: [
           {
-            prism: { orange: { 100: { $type: 'color', $value: ORANGE } } },
-            hue: { marigold: { soft: { bg: { $type: 'color', $value: '{prism.orange.100}' }, ink: { $type: 'color', $value: INK } } } },
+            palette: { orange: { 100: { $type: 'color', $value: ORANGE } } },
+            hue: { soft: { bg: { $type: 'color', $value: '{palette.orange.100}' }, ink: { $type: 'color', $value: INK } } },
             card: {
-              background: { $type: 'color', $value: '{hue.marigold.soft.bg}' },
+              background: { $type: 'color', $value: '{hue.soft.bg}' },
               color: { $type: 'color', $value: INK },
               paddingBlock: { $type: 'dimension', $value: px(8) },
               boxShadow: {
                 $type: 'shadow',
-                $value: { color: '{hue.marigold.soft.ink}', offsetX: px(0), offsetY: px(2), blur: px(4), spread: px(0) },
+                $value: { color: '{hue.soft.ink}', offsetX: px(0), offsetY: px(2), blur: px(4), spread: px(0) },
               },
             },
           },
@@ -45,26 +45,20 @@ async function run(css: string, options: Partial<ToghenPluginOptions> = {}) {
 
 describe('the fallback of a read follows references', () => {
   it('is the literal under resolve, as before', async () => {
-    assert.equal(
-      await run('a { color: t(hue.marigold.soft.bg); }', { references: 'resolve' }),
-      'a { color: var(--hue-marigold-soft-bg, #fae8d9); }',
-    );
+    assert.equal(await run('a { color: t(hue.soft.bg); }', { references: 'resolve' }), 'a { color: var(--hue-soft-bg, #fae8d9); }');
   });
 
   it('is the reference as a var() of its first hop under var, not the whole chain', async () => {
-    const css = await run('a { color: t(hue.marigold.soft.bg); background: t(card.background); }', { references: 'var' });
+    const css = await run('a { color: t(hue.soft.bg); background: t(card.background); }', { references: 'var' });
     assert.equal(
       css,
-      'a { color: var(--hue-marigold-soft-bg, var(--prism-orange-100)); background: var(--card-background, var(--hue-marigold-soft-bg)); }',
+      'a { color: var(--hue-soft-bg, var(--palette-orange-100)); background: var(--card-background, var(--hue-soft-bg)); }',
     );
   });
 
   it('is the literal where the token is no reference, under either setting', async () => {
     for (const references of ['resolve', 'var'] as const) {
-      assert.equal(
-        await run('a { color: t(hue.marigold.soft.ink); }', { references }),
-        'a { color: var(--hue-marigold-soft-ink, #1a1a1a); }',
-      );
+      assert.equal(await run('a { color: t(hue.soft.ink); }', { references }), 'a { color: var(--hue-soft-ink, #1a1a1a); }');
     }
   });
 
@@ -72,7 +66,7 @@ describe('the fallback of a read follows references', () => {
     const css = await run('@toghen mixins;', { references: 'var' });
     assert.match(
       css,
-      /@mixin --card \{[^}]*background: var\(--card-background, var\(--hue-marigold-soft-bg\)\);[^}]*color: var\(--card-color, #1a1a1a\);[^}]*padding-block: var\(--card-padding-block, 8px\)/,
+      /@mixin --card \{[^}]*background: var\(--card-background, var\(--hue-soft-bg\)\);[^}]*color: var\(--card-color, #1a1a1a\);[^}]*padding-block: var\(--card-padding-block, 8px\)/,
     );
     const resolved = await run('@toghen mixins;', { references: 'resolve' });
     assert.match(resolved, /background: var\(--card-background, #fae8d9\)/);
@@ -81,7 +75,7 @@ describe('the fallback of a read follows references', () => {
   it('writes a reference inside a shadow, in the structured shape', async () => {
     assert.equal(
       await run('a { box-shadow: t(card.boxShadow); }', { references: 'var' }),
-      'a { box-shadow: var(--card-box-shadow, 0px 2px 4px 0px var(--hue-marigold-soft-ink)); }',
+      'a { box-shadow: var(--card-box-shadow, 0px 2px 4px 0px var(--hue-soft-ink)); }',
     );
   });
 });
