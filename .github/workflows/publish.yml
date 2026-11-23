@@ -46,7 +46,7 @@ jobs:
       - run: pnpm check
       # The gate has built everything, so packing runs no script again (figma's
       # prepack is the gate itself).
-      - run: npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP/package"
+      - run: mkdir -p "$RUNNER_TEMP/package" && npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP/package"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: package
