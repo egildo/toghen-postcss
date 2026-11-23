@@ -487,6 +487,8 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
   const orders = new WeakMap<Node, Map<string, string>>();
   /** What each directive has reported, by message: a context block asks again for every context. */
   const reported = new WeakMap<Node, Set<string>>();
+  /** The value the plugin wrote at a declaration, rewritten or written by a directive: what it wrote is output, not input. */
+  const wrote = new WeakMap<Node, string>();
   /** The custom properties a part re-points, by the lookup of the token at rest (see {@link repointed}). */
   let repoints: Map<string, { twin: string; component: string }> | undefined;
 
@@ -546,8 +548,10 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
      * mistyped one token path got a build that stopped and never said why.
      */
     Declaration(decl, { result }) {
-      if (!HAS_CALL.test(decl.value)) return;
+      // PostCSS visits a declaration again once its value changes, and visits each one a directive writes: neither is read twice.
+      if (wrote.get(raw(decl)) === decl.value || !HAS_CALL.test(decl.value)) return;
       decl.value = directives(decl.value, decl, result);
+      wrote.set(raw(decl), decl.value);
     },
 
     /** `@toghen …;` and its alias `@t …;`: one handler. */
@@ -579,7 +583,7 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
         outcome = failure(path, undefined, err, word);
       }
       if (typeof outcome === 'string') report(atRule, result, outcome);
-      else atRule.replaceWith(...outcome);
+      else replace(atRule, outcome);
       return;
     }
     if (!/^declare\s+/.test(params)) {
@@ -607,7 +611,18 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
 
     if (typeof outcome === 'string') report(atRule, result, outcome);
     else if (outcome.length === 0) atRule.remove();
-    else atRule.replaceWith(...outcome);
+    else replace(atRule, outcome);
+  }
+
+  /** Writes a directive's output in its place, each declaration in it marked as written. */
+  function replace(atRule: AtRule, nodes: ChildProps[]): void {
+    const parent = atRule.parent!;
+    const at = parent.index(atRule);
+    atRule.replaceWith(...nodes);
+    for (const node of parent.nodes.slice(at, at + nodes.length)) {
+      if (node.type === 'decl') wrote.set(raw(node), node.value);
+      else if (node.type !== 'comment') node.walkDecls((decl) => void wrote.set(raw(decl), decl.value));
+    }
   }
 
   /** A path with no form after it: `contexts`, `mixins` and `declare` take none. */
@@ -761,7 +776,8 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
       const literal = write(path, mode, false);
       return references === 'var' ? write(path, mode, true) : literal;
     } catch (err) {
-      report(node, result, failure(path, mode, err));
+      // The defaults and a context's block may ask for the same mode.
+      reportOnce(node, result, failure(path, mode, err));
       return `toghen(${path}, ${mode})`;
     }
   }

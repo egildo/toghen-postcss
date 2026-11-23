@@ -422,6 +422,8 @@ The option messages come once per stylesheet. A `:toghen()` selector rule is lef
 
 Plugin messages start with `[@toghen/postcss]`. Lib's text and the class text follow a colon inside them. Names in angle brackets stand for what is in the reader's file. Messages come through `onUnresolved` unless the table says it is always a warning. The messages for retired forms are in [Retired forms](#retired-forms).
 
+A failure is reported once, at the declaration or directive that holds it. A directive reports a token once for each mode it cannot write it in; what the directive wrote is not read again.
+
 A token that a mixin cannot read, such as a gradient in a group, is reported once with its message for reads, and left out of the mixin. The rest of the mixin is written.
 
 ### Messages for reads

@@ -444,6 +444,64 @@ describe('onUnresolved, exercised on every branch', () => {
   });
 });
 
+describe('a failure is reported once, at its position', () => {
+  // A colour a theme changes, and a gradient, which has no CSS spelling. W3C structured shapes.
+  const srgb = (v: number) => ({ colorSpace: 'srgb', components: [v, v, v] });
+  const document: ResolverDocument = {
+    version: '2025-11-01',
+    name: 'ds',
+    sets: {
+      base: {
+        sources: [
+          {
+            color: { $type: 'color', ink: { $value: srgb(0.1) } },
+            fx: {
+              glow: {
+                $type: 'gradient',
+                $value: [
+                  { color: '{color.ink}', position: 0 },
+                  { color: srgb(1), position: 1 },
+                ],
+              },
+            },
+          },
+        ],
+      },
+    },
+    modifiers: {
+      theme: {
+        default: 'light',
+        contexts: { light: [], dark: [{ color: { ink: { $value: srgb(0.9) } } }] },
+        $extensions: { 'com.toghen': { css: { selector: "[data-theme='{context}']" } } },
+      },
+    },
+    resolutionOrder: [{ $ref: '#/sets/base' }, { $ref: '#/modifiers/theme' }],
+  };
+  /** Each warning as its position and its sentence up to the library's or the class's text. */
+  async function said(css: string) {
+    const system = new Resolver(document).resolveContextsToDesignSystem();
+    const result = await postcss([toghenPlugin({ system })]).process(css, { from: 'in.css' });
+    return result.warnings().map((w) => `${w.line}:${w.column} ${w.text.replace(/: (?:Token|No CSS)[\s\S]*$/, '')}`);
+  }
+
+  it('in a declaration whose other read succeeded, which PostCSS visits again', async () => {
+    assert.deepEqual(await said('.y {\n  color: t(color.ink) t(nope);\n}'), ['2:3 [@toghen/postcss] Cannot resolve token "ds.nope"']);
+  });
+
+  it('in what @toghen declare writes, which is not read again', async () => {
+    assert.deepEqual(await said('.x {\n  @toghen declare ds.fx;\n}'), [
+      '2:3 [@toghen/postcss] Cannot write token "ds.fx.glow" (mode: light)',
+    ]);
+  });
+
+  it('in what @toghen contexts writes, once in each context it fails in', async () => {
+    assert.deepEqual(await said('@toghen contexts;'), [
+      '1:1 [@toghen/postcss] Cannot write token "ds.fx.glow" (mode: light)',
+      '1:1 [@toghen/postcss] Cannot write token "ds.fx.glow" (mode: dark)',
+    ]);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // `@toghen path[, mode];` — a block expanded to its longhands.
 // ---------------------------------------------------------------------------
