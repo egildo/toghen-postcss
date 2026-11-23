@@ -1204,6 +1204,21 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
         );
         continue;
       }
+      // A token with a value on one side only has no pair. On the default's side it is in the defaults, as a block would leave it; on the other it would be lost.
+      const lost = new Map<string, string>();
+      for (const [side, context] of [
+        [lit, pair.light],
+        [dim, pair.dark],
+      ] as const) {
+        for (const w of side) if (!inRoot.some((r) => r.prop === w.prop)) lost.set(ownerOf(w.who!).owner, context);
+      }
+      for (const [lookup, context] of lost) {
+        report(
+          atRule,
+          result,
+          `[@toghen/postcss] Cannot write '${lookup}' with light-dark() for modifier '${modifier.name}': it has a value in context '${context}' only, and light-dark() takes one for each side. Give it a value in '${context === pair.light ? pair.dark : pair.light}' too, or write the modifier with a selector or an at-rule.`,
+        );
+      }
       for (const w of light) paired.set(w.prop, modifier.name);
       inRoot = inRoot.map((w) => {
         const l = light.find((x) => x.prop === w.prop);

@@ -124,6 +124,17 @@ describe('a modifier written with light-dark()', () => {
     assert.doesNotMatch(out, /light-dark/);
   });
 
+  it('reports a token with a value on the dark side only, which no pair can hold, and writes the other pairs', async () => {
+    const glow = doc({ accent: { glow: { $type: 'color', $value: srgb(0.4) } } });
+    await assert.rejects(
+      run('@toghen contexts ds;', glow, { references: 'var' }),
+      /Cannot write 'ds\.accent\.glow' with light-dark\(\) for modifier 'theme': it has a value in context 'night' only, and light-dark\(\) takes one for each side\. Give it a value in 'day' too, or write the modifier with a selector or an at-rule\./,
+    );
+    const out = await run('@toghen contexts ds;', glow, { references: 'var', onUnresolved: 'ignore' });
+    assert.match(out, /--color-bg: light-dark\(#ffffff, #000000\)/);
+    assert.doesNotMatch(out, /--accent-glow/);
+  });
+
   it('refuses a colour another modifier varies too, naming both and the token', async () => {
     await assert.rejects(
       run('@toghen contexts ds.color;', doc({}, { color: { line: { $value: srgb(0.1) } } })),
