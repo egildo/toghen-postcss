@@ -18,10 +18,11 @@ const DENSITY = { selector: "[data-density='{context}']" };
 const ext = (css: Record<string, unknown>) => ({ $extensions: { 'com.toghen': { css } } });
 
 // `theme` is a pair written with light-dark() (contexts day / night, so the names are read from the field);
-// `density` is spelled by attribute. `tweak` adds to the night context, `compact` to density's.
+// `density` is spelled by attribute. `tweak` adds to the night context, `compact` to density's, `extra` to the base.
 function doc(
   tweak: Record<string, unknown> = {},
   compact: Record<string, unknown> = { space: { gap: { $value: px(4) } } },
+  extra: Record<string, unknown> = {},
 ): ResolverDocument {
   return {
     version: '2025-11-01',
@@ -44,6 +45,7 @@ function doc(
                 $value: { color: '{color.bg}', offsetX: px(0), offsetY: px(2), blur: px(4), spread: px(0) },
               },
             },
+            ...extra,
           },
         ],
       },
@@ -116,6 +118,15 @@ describe('a modifier written with light-dark()', () => {
     await assert.rejects(
       run('@toghen contexts ds.space;', doc({ space: { gap: { $value: px(6) } } })),
       /Cannot write modifier 'theme' with light-dark\(\): 'ds.space.gap' is a dimension, and light-dark\(\) takes only colours\./,
+    );
+  });
+
+  it('names the type of the token a member belongs to, when it refuses the member', async () => {
+    const text = (fontWeight: number) => ({ fontFamily: ['Inter', 'sans-serif'], fontSize: px(14), fontWeight, lineHeight: 1.25 });
+    const bold = doc({ type: { body: { $value: text(700) } } }, undefined, { type: { body: { $type: 'typography', $value: text(400) } } });
+    await assert.rejects(
+      run('@toghen contexts ds.type;', bold),
+      /Cannot write modifier 'theme' with light-dark\(\): 'ds\.type\.body\.fontWeight' is a typography member, and light-dark\(\) takes only colours\./,
     );
   });
 

@@ -1237,10 +1237,13 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
       const other = light.find((w) => system.resolveToken(w.token ?? w.who!, lightMode)?.$type !== 'color');
       if (other) {
         const lookup = other.token ?? other.who!;
+        // A member is named by the type of the token it belongs to: lib gives a member no type of its own.
+        const { owner } = ownerOf(lookup);
+        const type = system.resolveToken(owner, lightMode)?.$type ?? 'value';
         report(
           atRule,
           result,
-          `[@toghen/postcss] Cannot write modifier '${modifier.name}' with light-dark(): '${lookup}' is a ${system.resolveToken(lookup, lightMode)?.$type ?? 'value'}, and light-dark() takes only colours. Write the modifier with a selector or an at-rule, or vary only colours in it.`,
+          `[@toghen/postcss] Cannot write modifier '${modifier.name}' with light-dark(): '${lookup}' is a ${owner === lookup ? type : `${type} member`}, and light-dark() takes only colours. Write the modifier with a selector or an at-rule, or vary only colours in it.`,
         );
         continue;
       }
