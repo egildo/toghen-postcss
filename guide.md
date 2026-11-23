@@ -523,6 +523,42 @@ A theme spelled as a media query lets only the operating system choose. For two 
 
 `light-dark()` follows the used `color-scheme`, which the app sets on any element. `:root { color-scheme: light dark; }` follows the system; `color-scheme: light` or `color-scheme: dark` on any element chooses for that element and its descendants. The plugin writes no `color-scheme`, and without one the light side shows. Only colours can be paired, and no mixin or spelling is written for the modifier (a comment says so). A media-query spelling remains the choice for browsers older than 2024, which do not know `light-dark()`.
 
+## When Lightning CSS runs after the plugin
+
+Lightning CSS often runs after PostCSS without being asked for. Vite 8 minifies a production build's CSS with it by default, and Parcel, Turbopack and Tailwind's optimise step run it too. It keeps what the plugin writes, except the `light-dark()` pairs and the comments. It must never see a stylesheet before the plugin does.
+
+**List the plugin before anything that runs Lightning CSS**, a PostCSS plugin such as Tailwind's included. Lightning CSS reads a number after a dot as a number, so it prints `t(palette.orange.100)` as `t(palette.orange.1)` and `t(elevation.raised.0.color)` as `t(elevation.raised0.color)`. The plugin then reports a token that is not found, or reads another token that has the new path. Vite's `css.transformer: 'lightningcss'` runs no PostCSS at all, so keep its default, `'postcss'`.
+
+**Exclude the lowering of `light-dark()`.** Vite 8's default targets (`baseline-widely-available`: Chrome 111, Firefox 114, Safari 16.4) are older than `light-dark()`, and at such targets Lightning CSS rewrites each pair:
+
+```css
+:root{--color-bg:var(--lightningcss-light,#fff)var(--lightningcss-dark,#000)}
+```
+
+It declares the two flags only beside a `color-scheme` in the stylesheet it processes, and the plugin writes none. Measured in Chromium and WebKit (claim 9 in the [measurements](./measurements/RESULTS.md)):
+
+- With no `color-scheme` in that stylesheet, the property is two colours side by side, invalid wherever it is read. A background is transparent and a text colour is inherited, even where the app sets `color-scheme` in another stylesheet.
+- With one, the pair is decided where the token is declared, the root. A subtree that sets its own `color-scheme` keeps the root's side.
+
+Exclude the feature, and the pairs reach the browser as the plugin wrote them:
+
+```javascript
+// vite.config.js
+import { Features } from 'lightningcss';
+
+export default {
+  css: { lightningcss: { exclude: Features.LightDark } },
+};
+```
+
+Vite hands `css.lightningcss` to its minifier as well. `lightningcss` is Vite's own dependency, so add it to your dev dependencies to import `Features`. A direct `transform()` call takes the same `exclude`. Excluded, `light-dark()` works only in the browsers that know it. For older ones, spell the modifier as a media query.
+
+**Use Lightning CSS 1.33.0 or later where an `@apply` reaches it.** The polyfill's `preserve: true` keeps each `@apply` beside its expansion. Lightning CSS 1.32.0 moved an `@apply` out of its rule when it flattened nesting, and 1.33.0 keeps it in place. Vite 8.3.8 depends on `lightningcss` ^1.33.0. The mixins themselves are expanded by then, since the polyfill runs in PostCSS first.
+
+**Comments are dropped**, minified or not, so the descriptions that `descriptions: 'comment'` writes do not reach the built stylesheet.
+
+Every custom property, a chain's empty flags (`--scheme--dark: ;`) and the layer order survive. Lightning CSS folds a layer order statement into the blocks that follow it, and the cascade order stays the same. `test/lightningcss.test.ts` runs every output of this guide through Lightning CSS 1.33.0 and checks this.
+
 ## Read one token in a rule
 
 `t()` is the short form of `toghen()`, and the [reference](./reference.md) gives both. A read is written as the token's custom property, with the default's value as fallback:
@@ -841,6 +877,7 @@ Cannot resolve token "ds.nothing.color": Token 'nothing.color' not found in coll
 - **A token is not written.** A path has a typo: `Cannot resolve token "ds.button.colour": Token 'button.colour' not found in collection 'ds' for mode 'light/regular'.`
 - **The build says a collection is not found.** The system has two token collections, so a path needs its collection name: `Cannot resolve token "text.default": Collection 'text' not found.`
 - **The build warns about a token that changes under two modifiers.** Use `bind: 'chain'`, or `references: 'var'` and the declarations you need. See [Make a token follow two modifiers](#make-a-token-follow-two-modifiers) for the message and the two fixes in context.
+- **A colour is transparent, or a subtree ignores its `color-scheme`, in the production build only.** Lightning CSS lowered the `light-dark()` pairs after the plugin. Exclude `Features.LightDark`, as [When Lightning CSS runs after the plugin](#when-lightning-css-runs-after-the-plugin) shows.
 - **The linter flags an at-rule.** If the linter does not know `@toghen`, `@mixin`, `@apply`, `@contents`, `@custom-media` or `@custom-selector`, add them to its list of at-rules that it ignores.
 - **The plugin does not run at all.** `postcss` is a peer dependency. Check that the configuration exports the plugin in the module format your build tool loads.
 
