@@ -434,6 +434,7 @@ A token that a mixin cannot read, such as a gradient in a group, is reported onc
 | `Cannot write token "<path>" (mode: <mode>): No CSS serialisation for a value of shape <keys>. …` | The token exists, and its value has no CSS spelling. Typically a typography token read whole under `'block'`, a gradient, or a stroke style. | Read its members (`t(<path>.fontSize)`), or set `typography: 'font'`. The full text of the class message is below. |
 | `Cannot read "<path>": as takes a form: the only form is value.` | `as` is followed by nothing. | Write `as value`, or remove `as`. |
 | `Cannot read "<path>": "as <form>" is retired or unknown: the only form is value.` | `as` is followed by a form other than `value`. | Write `as value`, or remove `as`. |
+| `Cannot read "<call>" in "@<name> <params>": t() and toghen() are read in declaration values, not in an at-rule's parameters. Write the value itself; the at-rule is left as written.` | A `t()` or `toghen()` in the parameters of an at-rule, such as `@media (min-width: t(bp.md))`. Nothing reads it there, and a media query cannot read a custom property either. | Write the value in the at-rule. |
 
 The full text of the class message, which the plugin repeats after the colon for a value with no CSS spelling:
 

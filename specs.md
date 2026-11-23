@@ -31,6 +31,7 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
     AtRule: {
       toghen(atRule, { result }) { /* @toghen contexts | mixins | declare; anything else is reported and left in place */ },
       t(atRule, { result }) { /* the same, short form */ },
+      '*'(atRule, { result }) { /* a t() in any other at-rule's parameters: reported, never read */ },
     },
   };
 }

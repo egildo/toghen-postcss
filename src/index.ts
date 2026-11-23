@@ -562,6 +562,18 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
     AtRule: {
       toghen: visited,
       t: visited,
+      /** A read in any other at-rule's parameters (`@media (min-width: t(bp.md))`) is never read: it is reported, so 'throw' stops the build. */
+      '*'(atRule, { result }) {
+        if (atRule.name === 'toghen' || atRule.name === 't') return;
+        const call = [...atRule.params.matchAll(TOGHEN_RE)].find((m) => m[1] === undefined)?.[0];
+        // Once: PostCSS visits the at-rule again when a declaration inside it changes.
+        if (call)
+          reportOnce(
+            atRule,
+            result,
+            `[@toghen/postcss] Cannot read "${call}" in "@${atRule.name} ${atRule.params}": t() and toghen() are read in declaration values, not in an at-rule's parameters. Write the value itself; the at-rule is left as written.`,
+          );
+      },
     },
   };
 

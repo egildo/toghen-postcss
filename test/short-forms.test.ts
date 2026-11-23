@@ -85,6 +85,24 @@ describe('t() is toghen()', () => {
     );
   });
 
+  it("reports a read in an at-rule's parameters, which is never read, once each, and stops the build under throw", async () => {
+    const css =
+      '@import url("t(1).css"); @media (min-width: t(ds.card.pad)) { a { padding: t(ds.card.pad) } } @container (width > toghen(ds.card.pad)) { b { margin: 0 } }';
+    await assert.rejects(
+      run(css),
+      /Cannot read "t\(ds\.card\.pad\)" in "@media \(min-width: t\(ds\.card\.pad\)\)": t\(\) and toghen\(\) are read in declaration values, not in an at-rule's parameters\. Write the value itself; the at-rule is left as written\./,
+    );
+    const out = await run(css, { onUnresolved: 'warn' });
+    assert.equal(
+      out.css,
+      '@import url("t(1).css"); @media (min-width: t(ds.card.pad)) { a { padding: var(--card-pad, 16px) } } @container (width > toghen(ds.card.pad)) { b { margin: 0 } }',
+    );
+    assert.deepEqual(
+      out.warnings.map((w) => /Cannot read "[^"]+" in "@\w+/.exec(w)?.[0]),
+      ['Cannot read "t(ds.card.pad)" in "@media', 'Cannot read "toghen(ds.card.pad)" in "@container'],
+    );
+  });
+
   it('fails like toghen() does, and leaves the call as written', async () => {
     const out = await run('a { color: t(ds.card.nope) }', { onUnresolved: 'warn' });
     assert.equal(out.css, 'a { color: t(ds.card.nope) }');
