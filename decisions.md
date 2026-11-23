@@ -810,6 +810,49 @@ Lib now computes every value it can, so any `oklch()` string or `color-mix(in ok
 
 **What the build found.** The plan expected a shadow reading a themed colour to be unvaried under `references: 'var'`; the block comparison is on resolved values, so it was varied. The pair compares the text written instead, which gives the plan's result without a special case. The mixins comment is one per context, as the spellings' is.
 
+## Fixed: what the review of 23 November 2026 found (23 November 2026)
+
+**Status:** built; not released yet. A build that passed under `'throw'` can now fail on three new reports, so this is a minor version.
+
+**Where it comes from.** The review is house's `.reference/plans/workspace/review-2026-11-23.md`, with the round's plan beside it. A probe, or a page in Chrome, proved each defect.
+
+**Fixed:**
+
+- **A mixin with one member that has no CSS spelling.** It was dropped in silence. Now the member is reported, naming its shape, the rest of the mixin is written, and `'throw'` stops the build.
+- **A `light-dark()` pair registered as `<color>`.** That froze the pair at `:root`. Now it gets no `@property`.
+- **Layer names.** They are escaped, and a leading digit is escaped in hex (`\32 x`).
+- **A token on one side only of a `light-dark()` modifier.** It was dropped. Now it is reported.
+- **Failures reported twice, once without a position.** Each is reported once now.
+- **`t(` inside strings and `url()`.** It was read. Now it is left alone.
+- **`t()` in an at-rule's parameters.** It went unreported. Now it is reported.
+- **Generated nodes, which carried no `source`.** They carry the directive's.
+- **The refusal of a member,** which now names the member's type.
+- **The monorepo's leftovers in the specs and in an error.**
+- **Two example names** that looked taken from a real palette.
+
+**What the build found:**
+
+- **Two causes of a double report.**
+  - PostCSS visits a declaration again once its value changes.
+  - A directive's own output, the `toghen(path, mode)` left for a token it cannot write, was read again as input.
+  - `@toghen contexts` also repeated a token's message for the defaults and for the default context's block, which share a mode.
+  - The plugin now remembers what it wrote, and a directive says each message once.
+- **At-rules are visited again too,** when a declaration inside them changes. The parameters report is therefore made once per at-rule.
+- **Layer names.**
+  - `ident()` alone does not make a layer name.
+  - A modifier name with whitespace never reaches a layer: lib refuses the mode first.
+  - A modifier named for a CSS-wide keyword (`initial`, `revert-layer`) is an invalid layer name even escaped. It is not refused yet.
+- **Member types.** Lib gives a member no type of its own, and `typeOf` is private. So the refusal names a member by its token's type.
+- **Measured in Chrome 158 on this output.**
+  - An unregistered pair inside a `color-scheme: dark` subtree switches. A registered one stays on the root's choice.
+  - `@layer \32 x` and `@layer a\.b` apply.
+- **A mixin token left out leaves no greppable `toghen(`, only its warning,** as a failing group's mixins already do.
+
+**Noticed, not fixed:**
+
+- `sameIn` counts a failure as a difference, so an unwritable token is written as `toghen(…)` into every context block.
+- One try covers all of a typography part token's twins.
+
 ## Open questions
 
 - *Moot since 13 October 2026.* **A single read in a state's scope, through a reference.** It now holds for a pin to a state too. A block in a
