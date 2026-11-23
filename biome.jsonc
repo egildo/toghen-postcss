@@ -30,8 +30,6 @@
     // [^\x00-\x7f] means "any non-ASCII character" on purpose.
     { "includes": ["src/index.ts"], "linter": { "rules": { "suspicious": { "noControlCharactersInRegex": "off" } } } },
     // `void (node.raws = {})` and a conditional assignment inside walk callbacks are deliberate one-liners in the test.
-    { "includes": ["test/example.test.ts"], "linter": { "rules": { "suspicious": { "noAssignInExpressions": "off" } } } },
-    // `escape` is a local regex-escaping helper in a standalone script; the global is never used there.
-    { "includes": ["scripts/check-purity.mjs"], "linter": { "rules": { "suspicious": { "noShadowRestrictedNames": "off" } } } }
+    { "includes": ["test/example.test.ts"], "linter": { "rules": { "suspicious": { "noAssignInExpressions": "off" } } } }
   ]
 }

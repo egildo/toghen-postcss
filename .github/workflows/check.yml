@@ -1,20 +1,21 @@
 # Copied from house 0.1.0. Change it in house, then copy it out again.
 # Runs on the GitHub mirror; the repository itself lives on Codeberg.
+# Actions are pinned by commit, with the release in a comment.
 name: check
 on: [push, pull_request]
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       # The purity check reads its names from outside the repository. Without the
-      # secret it says so and passes.
+      # secret it says so and fails: under CI, nothing checked is not a pass.
       - name: purity names
         env:
           PURITY_NAMES: ${{ secrets.PURITY_NAMES }}
