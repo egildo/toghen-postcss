@@ -853,6 +853,38 @@ Lib now computes every value it can, so any `oklch()` string or `color-mix(in ok
 - `sameIn` counts a failure as a difference, so an unwritable token is written as `toghen(…)` into every context block.
 - One try covers all of a typography part token's twins.
 
+## Ruled and built: Lightning CSS is an environment the output must survive (23 November 2026)
+
+**Status:** built; not released yet.
+
+**Where it comes from.** The plan is house's `.reference/plans/workspace/plan-2026-11-23-lightningcss.md`. Egildo ruled its questions on 23 November 2026: "1a 2b 3a".
+
+**What was ruled.**
+
+- **The plugin stays on PostCSS.** Lightning CSS is treated as what already runs after it in consumers' builds: by default in Vite 8, and in Parcel, Turbopack and Tailwind's optimise step.
+- **A second adapter waits.** It needs a consumer with a pipeline without PostCSS, a release of Lightning CSS that fixes its visitor regression (parcel-bundler/lightningcss #1065), answers on paths and mixins, and this round's fixes merged. A spike proved the path: a thin layer over the plugin, used as a core that writes text, gave identical output on the tutorial's stylesheet.
+- **Replacing the adapter was rejected,** because nothing outside PostCSS can expand Toghen's mixins.
+
+**What was built.**
+
+- **A measurement,** in `measurements/c9`.
+- **A parity test** against `lightningcss` 1.33.0, pinned exactly.
+- **A guide section,** *When Lightning CSS runs after the plugin*.
+- **A closed item in the specs.** Lightning CSS keeps the empty chain flags and drops comments.
+
+**What the build found:**
+
+- **The lowering, measured in Chromium 159 and WebKit 27.2, which agree.** At Vite 8.3.8's default targets, minified, Lightning CSS writes a `light-dark()` pair as `var(--lightningcss-light,#fff)var(--lightningcss-dark,#000)`. It declares the flags only beside a `color-scheme` in the same sheet.
+  - With a `color-scheme`, the pair is decided at the root, so a subtree's own scheme is ignored.
+  - Without one, the colour is lost entirely, and the `var()` fallback is not used.
+  - `exclude: Features.LightDark` keeps the pair as written. That form is pinned as text and was not measured in a browser.
+- **No golden output holds a `light-dark()` pair or an empty chain flag.** So the parity test adds two synthetic runs, or two of its checks would check nothing.
+- **Over the 37 golden outputs, at all three settings,** the only warning is `Unknown at rule: @mixin`, and nothing throws.
+- **Vite 8.3.8 depends on `lightningcss` ^1.33.0,** and spreads `css.lightningcss` into its minify call, so `exclude` reaches the minifier.
+- **Paths break when Lightning CSS runs first.** `t(palette.orange.100)` prints as `t(palette.orange.1)`, and `t(elevation.raised.0.color)` as `t(elevation.raised0.color)`. The guide says to list the plugin first; a test pins the hazard.
+
+**Noticed, not fixed.** `measurements/c8` still uses the monorepo's layout, so claim 8 cannot be rerun as documented.
+
 ## Open questions
 
 - *Moot since 13 October 2026.* **A single read in a state's scope, through a reference.** It now holds for a pin to a state too. A block in a

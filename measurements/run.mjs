@@ -77,6 +77,16 @@ for (const [name, eng] of Object.entries(engines)) {
         ['f2_ab', 'f2_b', 'f2_none', 'f2_alb', 'f9_ab', 'f9_b', 'f9_none', 'f9_alb'].map((s) => [`#${s}`, ['color']]),
       ),
     ]);
+    for (const form of ['native', 'lowered', 'lowered-no-scheme']) {
+      J([
+        `c9 ${form}`,
+        await probe(
+          page,
+          `c9/${form}.html`,
+          ['#r', '#d', '#l'].map((s) => [s, ['backgroundColor', 'color'], ['--color-bg']]),
+        ),
+      ]);
+    }
     await ctx.close();
   }
   await b.close();

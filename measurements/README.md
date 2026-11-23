@@ -1,6 +1,6 @@
 # Browser measurements
 
-The fixtures (`c1.html` to `c7.html`), the script that reads them (`run.mjs`), the chain check (`c8/`) and the recorded results (`RESULTS.md`). The CSS claims in the postcss and lib docs link here.
+The fixtures (`c1.html` to `c7.html`, and the pages in `c9/`), the script that reads them (`run.mjs`), the chain check (`c8/`) and the recorded results (`RESULTS.md`). The CSS claims in the postcss and lib docs link here.
 
 To run them again, copy this folder to a scratch folder outside the repository, then there:
 
@@ -23,3 +23,16 @@ TOGHEN_ROOT=/path/to/Toghen node run.mjs
 ```
 
 It imports the plugin, `@toghen/lib` and `postcss` from `TOGHEN_ROOT` and `playwright-core` from the nearest `node_modules`. It is not part of `pnpm test`, because it needs browsers.
+
+## Claim 9: `c9/`
+
+The three pages in `c9/` hold one `light-dark()` modifier's output: as the plugin writes it, and after Lightning CSS 1.33.0 at Vite 8's default targets, with and without `color-scheme` in the sheet it lowers. `run.mjs` reads them with the other fixtures.
+
+`c9/build.mjs` writes the pages again from the **built** plugin (`pnpm build` at the root first). It needs Lightning CSS in the scratch folder as well:
+
+```sh
+npm install lightningcss@1.33.0
+TOGHEN_ROOT=/path/to/postcss node c9/build.mjs
+```
+
+It imports the plugin, `@toghen/lib` and `postcss` from `TOGHEN_ROOT`, and `lightningcss` from the nearest `node_modules`.
