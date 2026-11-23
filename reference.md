@@ -439,7 +439,7 @@ A token that a mixin cannot read, such as a gradient in a group, is reported onc
 The full text of the class message, which the plugin repeats after the colon for a value with no CSS spelling:
 
 ```text
-No CSS serialisation for a value of shape <keys>. Composite types the core resolves but this adapter cannot yet write are `gradient` (the DTCG value carries stops but no direction) and `typography` (a block of several CSS properties, not one value: write its members instead, `toghen(path.fontSize)`, `toghen(path.lineHeight)` and so on, or set `typography: 'font'`), and a `strokeStyle` object (`dashArray`, `lineCap`: CSS has no dash pattern). See toghen-postcss/specs.md §Composite types.
+No CSS serialisation for a value of shape <keys>. Composite types the core resolves but this adapter cannot yet write are `gradient` (the DTCG value carries stops but no direction) and `typography` (a block of several CSS properties, not one value: write its members instead, `toghen(path.fontSize)`, `toghen(path.lineHeight)` and so on, or set `typography: 'font'`), and a `strokeStyle` object (`dashArray`, `lineCap`: CSS has no dash pattern).
 ```
 
 ### Messages for forms

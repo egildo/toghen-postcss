@@ -55,7 +55,7 @@ A call is found in a declaration value with one pattern, long and short form ali
 
 Each match goes through one function, `read()`. It resolves the path, takes the context from the call or the default, and prints the value in the form the position and `as value` decide: a literal, a `var()` of the property, or, under `references: 'var'`, a `var()` of the first hop. `system.resolveValue()` is one step of it, never the whole.
 
-Three at-rules are directives: `@toghen contexts`, `@toghen mixins` and `@toghen declare`. Any other `@toghen` at-rule is reported with one sentence naming its replacement, and stays in place. A directive is replaced by what it writes, and every node it writes carries the directive's `source`, so a warning about it and a source map both point at the directive. What it writes is output: the plugin does not read it again.
+Four at-rules are directives: `@toghen contexts`, `@toghen mixins`, `@toghen spellings` and `@toghen declare`. Any other `@toghen` at-rule is reported with one sentence naming its replacement, and stays in place. A directive is replaced by what it writes, and every node it writes carries the directive's `source`, so a warning about it and a source map both point at the directive. What it writes is output: the plugin does not read it again.
 
 ### Short forms
 
@@ -615,14 +615,17 @@ src/
 └── index.ts                      # Plugin implementation (single file)
 
 test/
-├── example/                      # The running example's tokens and resolver (inputs)
 ├── example-output/               # Golden outputs of the running example
-├── example.test.ts               # The golden outputs, checked byte for byte
+├── example.test.ts               # The running example, read from @toghen/lib/example/; the golden outputs, byte for byte
 ├── fixture-composites.ts         # The shared synthetic document, in the W3C structured shapes
+├── cascade.ts                    # a cascade just big enough for one component, for the tests that ask what an element gets
 ├── chain.test.ts                 # bind: 'chain', rule by rule
+├── computed-values.test.ts       # values the core computes, written under either references setting
+├── consumer-needs.test.ts        # css.write: false, and a mixin that mixes source files
 ├── contexts.test.ts              # @toghen contexts, flat and layered
 ├── descriptions.test.ts          # descriptions: 'comment'
 ├── equivalence.test.ts           # a component's mixins and its plain rules, in a simulated cascade
+├── fallback.test.ts              # a read's fallback follows references
 ├── family-quoting.test.ts        # a family name is quoted when it has a space
 ├── fixes.test.ts                 # regressions, one test each: font lists, layer order, composites: 'shorthand'
 ├── font-shorthand.test.ts        # typography: 'font'
@@ -630,14 +633,22 @@ test/
 ├── keywords-and-members.test.ts  # colour keywords, typography members, a token in one context only
 ├── layers.test.ts                # @toghen contexts in a layer, and t() in any layer
 ├── letter-spacing.test.ts        # letterSpacing tokens
+├── light-dark.test.ts            # a modifier written with light-dark()
 ├── members.test.ts               # member properties through declare, contexts and reads
 ├── mixins.test.ts                # @toghen mixins: groups, typography, --when- mixins, placement
 ├── names.test.ts                 # propertyName, and two paths with one name
+├── nested.test.ts                # a nested instance starts again from its rest, and @contents
 ├── parts.test.ts                 # a group's mixin nests its parts, a part's mixin, the expansion
-├── plugin.test.ts                # t() values, composite values, error modes
+├── plugin.test.ts                # t() values, composite values, error modes, positions
+├── precedence.test.ts            # the cascade agrees with the core on which part applies
 ├── property.test.ts              # @property with registerProperties, and reads of the property
-├── short-forms.test.ts           # t() and @t
+├── short-forms.test.ts           # t() and @t, strings and url(), and an at-rule's parameters
+├── spellings.test.ts             # @toghen spellings
 └── types.test.ts                 # what valueToCss writes and refuses, each DTCG type
+
+measurements/                     # Browser checks of the CSS claims, see RESULTS.md
+scripts/
+└── check-purity.mjs              # The purity check, copied from house
 ```
 
 ---
@@ -648,8 +659,9 @@ test/
 - **Bundler:** tsup
 - **Test runner:** Node's test runner with tsx as its loader, `node --import tsx/esm --test`
 - **Commands:**
-  - `pnpm --filter @toghen/postcss build`
-  - `pnpm --filter @toghen/postcss test`
+  - `pnpm build`
+  - `pnpm test`
+  - `pnpm check`: Biome, the type check, the tests, the build and the purity check, the gate CI runs
 
 ---
 

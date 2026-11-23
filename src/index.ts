@@ -154,8 +154,7 @@ export class UnserializableValueError extends Error {
         `\`gradient\` (the DTCG value carries stops but no direction) and ` +
         `\`typography\` (a block of several CSS properties, not one value: ` +
         `write its members instead, \`toghen(path.fontSize)\`, \`toghen(path.lineHeight)\` and so on, ` +
-        `or set \`typography: 'font'\`), and a \`strokeStyle\` object (\`dashArray\`, \`lineCap\`: CSS has no dash pattern). ` +
-        `See toghen-postcss/specs.md §Composite types.`,
+        `or set \`typography: 'font'\`), and a \`strokeStyle\` object (\`dashArray\`, \`lineCap\`: CSS has no dash pattern).`,
     );
     this.name = 'UnserializableValueError';
     this.value = value;
