@@ -634,6 +634,7 @@ test/
 ├── layers.test.ts                # @toghen contexts in a layer, and t() in any layer
 ├── letter-spacing.test.ts        # letterSpacing tokens
 ├── light-dark.test.ts            # a modifier written with light-dark()
+├── lightningcss.test.ts          # every golden output through Lightning CSS 1.33.0, as a build runs it after the plugin
 ├── members.test.ts               # member properties through declare, contexts and reads
 ├── mixins.test.ts                # @toghen mixins: groups, typography, --when- mixins, placement
 ├── names.test.ts                 # propertyName, and two paths with one name
