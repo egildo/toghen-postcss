@@ -422,7 +422,7 @@ The option messages come once per stylesheet. A `:toghen()` selector rule is lef
 
 Plugin messages start with `[@toghen/postcss]`. Lib's text and the class text follow a colon inside them. Names in angle brackets stand for what is in the reader's file. Messages come through `onUnresolved` unless the table says it is always a warning. The messages for retired forms are in [Retired forms](#retired-forms).
 
-A mixin body or a typography mixin that cannot be read is left out with no message. A group with one direct token that has no CSS spelling gets no mixin at all.
+A token that a mixin cannot read, such as a gradient in a group, is reported once with its message for reads, and left out of the mixin. The rest of the mixin is written.
 
 ### Messages for reads
 

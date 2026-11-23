@@ -1396,13 +1396,16 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
     const rel = (lookup: string) => lookup.slice(collection.name.length + 1);
     const full = (at: string) => `${collection.name}.${at}`;
     const relTokens = lookups.map(rel);
-    const body = (entries: Entry[]): ChildProps[] | undefined => {
-      try {
-        return entries.map((e) => ({ prop: e.prop, value: read(reading, e.lookup, undefined, undefined, e) }));
-      } catch {
-        return undefined;
-      }
-    };
+    // A member that cannot be written is reported and left out, and the rest of the mixin is written.
+    const body = (entries: Entry[]): ChildProps[] =>
+      entries.flatMap((e) => {
+        try {
+          return [{ prop: e.prop, value: read(reading, e.lookup, undefined, undefined, e) }];
+        } catch (err) {
+          reportOnce(atRule, result, failure(e.lookup, defaultMode, err));
+          return [];
+        }
+      });
 
     // A group is a part when its key is a value of an axis in the vocabulary at its parent group (lib's `partAt`).
     const partAt = (g: string) => collection.partAt(g, mode) ?? undefined;
@@ -1468,8 +1471,9 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
           if (isProperty(prop) && !unwritten(lookup, mode))
             out.push({ prop, value: read(reading, lookup, undefined, undefined, { prop, lookup }) });
         }
-      } catch {
-        // A token that cannot be written here is left out, as in a group.
+      } catch (err) {
+        // A token that cannot be written here is reported and left out, as in a group.
+        reportOnce(atRule, result, failure(lookup, defaultMode, err));
       }
       return out;
     };
@@ -1571,7 +1575,7 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
         }
         if (system.resolveToken(lookup, mode)?.$type === 'typography') {
           const nodes = body(typographyEntries(lookup, mode));
-          if (nodes && nodes.length > 0) put(top, propertyName(lookup), rel(lookup), nodes);
+          if (nodes.length > 0) put(top, propertyName(lookup), rel(lookup), nodes);
         }
       } catch (err) {
         if ((err as Error)?.name === 'CssSyntaxError') throw err;
