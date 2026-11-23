@@ -1213,7 +1213,9 @@ export default function toghenPlugin(options: ToghenPluginOptions): Plugin {
       if (descriptions === 'comment' && modifier.description && light.length > 0) introductions.push(comment(modifier.description));
     }
     const everything: Written[] = [...inRoot];
-    blocks.push(...registrations(inRoot, defaults));
+    // A pair is not registered: a registered <color> computes light-dark() where it is declared, so a subtree's color-scheme would not switch it.
+    const unpaired = inRoot.filter((w) => !paired.has(w.prop));
+    blocks.push(...registrations(unpaired, defaults));
     blocks.push(
       ...sublayer('defaults', [
         { selector: rootSelector, nodes: [...introductions, ...commented(inRoot, path, defaults, undefined)], raws: { between: ' ' } },

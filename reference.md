@@ -155,7 +155,7 @@ With `true`, `@toghen contexts` writes an `@property` rule before the defaults f
 | `duration` | `<time>` |
 | `number` | `<number>` |
 
-Each rule has `inherits: true` and an `initial-value` of the default's literal. A dimension in `rem` or `em` gets no rule. Chain links and chain flags never get one. The reason is that a registered property always has a value, so a `var()` never takes its fallback, and `initial` gives the registered value instead of the invalid value that chains rely on.
+Each rule has `inherits: true` and an `initial-value` of the default's literal. A dimension in `rem` or `em` gets no rule. Chain links and chain flags never get one. The reason is that a registered property always has a value, so a `var()` never takes its fallback, and `initial` gives the registered value instead of the invalid value that chains rely on. A colour written as a `light-dark()` pair gets none either: a property registered as `<color>` computes the pair where it is declared, so `color-scheme` on a descendant would no longer switch it.
 
 ```css
 @property --surface-raised {

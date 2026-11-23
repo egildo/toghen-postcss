@@ -164,10 +164,12 @@ describe('a modifier written with light-dark()', () => {
     assert.match(out, /@custom-selector :--density-compact/);
   });
 
-  it('registers a paired colour with the default context literal as its initial value', async () => {
+  it('registers no paired colour, so color-scheme on a subtree still switches it, and registers a plain one', async () => {
+    // A property registered as <color> computes light-dark() where it is declared, and a descendant inherits that one colour.
     const out = await run('@toghen contexts ds.color;', doc(), { registerProperties: true });
-    assert.match(out, /@property --color-bg \{ syntax: '<color>'; inherits: true; initial-value: #ffffff \}/);
+    assert.doesNotMatch(out, /@property --color-(?:bg|line|surface) /);
     assert.match(out, /--color-bg: light-dark\(#ffffff, #000000\)/);
+    assert.match(out, /@property --color-same \{ syntax: '<color>'; inherits: true; initial-value: #808080 \}/);
   });
 
   it('writes the modifier description before the first pair under descriptions: comment', async () => {
