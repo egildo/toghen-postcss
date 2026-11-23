@@ -1,6 +1,6 @@
 # Browser check of the CSS claims
 
-Playwright 1.63.0 (`playwright-core`, installed in a scratch folder, see README.md), Node 25.6.1 (claims 1 to 7; claim 8 ran on Node 26.10.0). Run: `node run.mjs` (fixtures `c1.html` to `c7.html` in this folder); claim 8 runs from `c8/`, see README.md.
+Playwright 1.63.0 (`playwright-core`, installed in a scratch folder, see README.md), Node 25.6.1 (claims 1 to 7; claim 8 ran on Node 26.10.0; claim 9 on Playwright 1.65.1, see its section). Run: `node run.mjs` (fixtures `c1.html` to `c7.html` in this folder); claim 8 runs from `c8/`, see README.md.
 
 Engines: **Chromium 153.0.8010.12** and **WebKit 26.6** (Playwright's build, not Safari). Firefox is not installed in the Playwright cache (not downloaded), so it is **not measured**. Both engines gave identical results for every claim, in `colorScheme` light and dark (differences are noted per claim). The script reads values with `getComputedStyle`.
 
@@ -14,6 +14,7 @@ Engines: **Chromium 153.0.8010.12** and **WebKit 26.6** (Playwright's build, not
 | 6 | `--x: initial` makes `var(--x, fallback)` use the fallback | PASS | c6.html |
 | 7 | Chain correct where plain blocks are wrong, axes on different elements | PASS | c7.html |
 | 8 | `bind: 'chain'` output matches `Resolver.valueAt()` in every nesting, in every output form | PASS | c8/ |
+| 9 | Lightning CSS's lowering of `light-dark()` loses a subtree's scheme, and leaves no colour where its sheet declares no `color-scheme` | CONFIRMED | c9/ |
 
 ## 1. Sublayer order over specificity (PASS)
 `defaults` held `html:root[data-x]{--a:1}` (specificity 0,3,1); `theme` held `[data-theme=dark]{--a:2}` (0,1,0). Computed `--a` = `2` (both engines). Same with the dotted form `@layer tokens.defaults` / `tokens.theme` (`--c` = `2`). Unlayered `:where(:root){--u:unlayered}` (specificity 0) against `@layer tokens.theme{:root{--u:layered}}`: `--u` = `unlayered`.
@@ -155,5 +156,54 @@ threeModifiers       media-flat     170/170 nestings (1700/1700 readings; both p
 ALL MATCH
 ```
 
+## 9. `light-dark()` after Lightning CSS (CONFIRMED)
+
+Run 23 November 2026 by `run.mjs` over the pages in [c9/](./c9/), from a scratch copy outside the repository (README.md), Playwright 1.65.1 (`playwright-core`), Node 25.6.1. Engines: **Chromium 159.0.8154.6** and **WebKit 27.2** (Playwright's build). **Firefox: UNAVAILABLE** (not in the Playwright cache; not downloaded). Claims 1 to 7 ran again on these engines in the same run and gave the readings recorded above.
+
+The CSS is the plugin's own output, written by [c9/build.mjs](./c9/build.mjs) from the built plugin: one modifier, `theme`, spelled with `lightDark` (contexts `day` and `night`), two colours it varies (`color.bg` white or black, `color.text` `#1a1a1a` or `#e6e6e6`), and a consumer `.c` that reads both with `t()`. The app's colour schemes are `:root { color-scheme: light dark }` and two subtrees that choose, `.dark` and `.light`. Three pages:
+
+- **native**: the plugin's output and the app's schemes, as written.
+- **lowered**: the same sheet through Lightning CSS 1.33.0 at Vite 8.3.8's default targets (`build.cssTarget` `baseline-widely-available`: Chrome 111, Edge 111, Firefox 114, Safari and iOS 16.4), minified, as Vite's production build runs it after PostCSS. `--color-bg: light-dark(#ffffff, #000000)` became `--color-bg:var(--lightningcss-light,#fff)var(--lightningcss-dark,#000)`, and each `color-scheme` gained the two flags beside it, in `:root`, under `@media (prefers-color-scheme:dark)`, in `.dark` and in `.light`.
+- **lowered-no-scheme**: the plugin's output lowered alone, the app's schemes in a second sheet that Lightning CSS did not process, as an inline style or a sheet from another tool would be. No flag is declared anywhere.
+
+Consumer `background-color` (`var(--color-bg, #fff)`), at the root and inside each subtree, and the computed `--color-bg`:
+
+| Page | Page scheme | Root | `.dark` | `.light` | `--color-bg` |
+|---|---|---|---|---|---|
+| native | light | `rgb(255, 255, 255)` | `rgb(0, 0, 0)` | `rgb(255, 255, 255)` | `light-dark(#ffffff, #000000)` |
+| native | dark | `rgb(0, 0, 0)` | `rgb(0, 0, 0)` | `rgb(255, 255, 255)` | `light-dark(#ffffff, #000000)` |
+| lowered | light | `rgb(255, 255, 255)` | `rgb(255, 255, 255)` **wrong** | `rgb(255, 255, 255)` | `#fff` |
+| lowered | dark | `rgb(0, 0, 0)` | `rgb(0, 0, 0)` | `rgb(0, 0, 0)` **wrong** | `#000` |
+| lowered-no-scheme | light | `rgba(0, 0, 0, 0)` | `rgba(0, 0, 0, 0)` | `rgba(0, 0, 0, 0)` | `#fff#000` |
+| lowered-no-scheme | dark | `rgba(0, 0, 0, 0)` | `rgba(0, 0, 0, 0)` | `rgba(0, 0, 0, 0)` | `#fff#000` |
+
+The consumer's `color` (`t(color.text)`) follows the same pattern: `#1a1a1a` or `#e6e6e6` where the background is white or black. On lowered-no-scheme it is the inherited text colour, `rgb(0, 0, 0)` on a light page and `rgb(255, 255, 255)` on a dark one, never the token's. Chromium and WebKit gave **identical** readings.
+
+Meaning: the browser half of the specs' derivation holds. Lowered, the pair is decided where the token is declared, the root, and a subtree that sets `color-scheme` inherits the root's side. Where the lowered sheet declares no `color-scheme`, the property is two colours side by side, invalid at computed-value time wherever it is read: a background is transparent, a text colour is inherited, and the `var()` fallback is not used, because the property is defined. The native form switches on every subtree in both engines, as claim 5 found. Lightning CSS's `exclude: Features.LightDark` leaves `light-dark()` as written, so a page lowered with it reads as the native rows.
+
+Output of the run (the `c9` lines), verbatim:
+
+```
+== chromium 159.0.8154.6
+-- scheme light
+["c9 native",[{"#r":{"backgroundColor":"rgb(255, 255, 255)","color":"rgb(26, 26, 26)","--color-bg":"light-dark(#ffffff, #000000)"}},{"#d":{"backgroundColor":"rgb(0, 0, 0)","color":"rgb(230, 230, 230)","--color-bg":"light-dark(#ffffff, #000000)"}},{"#l":{"backgroundColor":"rgb(255, 255, 255)","color":"rgb(26, 26, 26)","--color-bg":"light-dark(#ffffff, #000000)"}}]]
+["c9 lowered",[{"#r":{"backgroundColor":"rgb(255, 255, 255)","color":"rgb(26, 26, 26)","--color-bg":"#fff"}},{"#d":{"backgroundColor":"rgb(255, 255, 255)","color":"rgb(26, 26, 26)","--color-bg":"#fff"}},{"#l":{"backgroundColor":"rgb(255, 255, 255)","color":"rgb(26, 26, 26)","--color-bg":"#fff"}}]]
+["c9 lowered-no-scheme",[{"#r":{"backgroundColor":"rgba(0, 0, 0, 0)","color":"rgb(0, 0, 0)","--color-bg":"#fff#000"}},{"#d":{"backgroundColor":"rgba(0, 0, 0, 0)","color":"rgb(0, 0, 0)","--color-bg":"#fff#000"}},{"#l":{"backgroundColor":"rgba(0, 0, 0, 0)","color":"rgb(0, 0, 0)","--color-bg":"#fff#000"}}]]
+-- scheme dark
+["c9 native",[{"#r":{"backgroundColor":"rgb(0, 0, 0)","color":"rgb(230, 230, 230)","--color-bg":"light-dark(#ffffff, #000000)"}},{"#d":{"backgroundColor":"rgb(0, 0, 0)","color":"rgb(230, 230, 230)","--color-bg":"light-dark(#ffffff, #000000)"}},{"#l":{"backgroundColor":"rgb(255, 255, 255)","color":"rgb(26, 26, 26)","--color-bg":"light-dark(#ffffff, #000000)"}}]]
+["c9 lowered",[{"#r":{"backgroundColor":"rgb(0, 0, 0)","color":"rgb(230, 230, 230)","--color-bg":"#000"}},{"#d":{"backgroundColor":"rgb(0, 0, 0)","color":"rgb(230, 230, 230)","--color-bg":"#000"}},{"#l":{"backgroundColor":"rgb(0, 0, 0)","color":"rgb(230, 230, 230)","--color-bg":"#000"}}]]
+["c9 lowered-no-scheme",[{"#r":{"backgroundColor":"rgba(0, 0, 0, 0)","color":"rgb(255, 255, 255)","--color-bg":"#fff#000"}},{"#d":{"backgroundColor":"rgba(0, 0, 0, 0)","color":"rgb(255, 255, 255)","--color-bg":"#fff#000"}},{"#l":{"backgroundColor":"rgba(0, 0, 0, 0)","color":"rgb(255, 255, 255)","--color-bg":"#fff#000"}}]]
+== webkit 27.2
+-- scheme light
+["c9 native",[{"#r":{"backgroundColor":"rgb(255, 255, 255)","color":"rgb(26, 26, 26)","--color-bg":"light-dark(#ffffff, #000000)"}},{"#d":{"backgroundColor":"rgb(0, 0, 0)","color":"rgb(230, 230, 230)","--color-bg":"light-dark(#ffffff, #000000)"}},{"#l":{"backgroundColor":"rgb(255, 255, 255)","color":"rgb(26, 26, 26)","--color-bg":"light-dark(#ffffff, #000000)"}}]]
+["c9 lowered",[{"#r":{"backgroundColor":"rgb(255, 255, 255)","color":"rgb(26, 26, 26)","--color-bg":"#fff"}},{"#d":{"backgroundColor":"rgb(255, 255, 255)","color":"rgb(26, 26, 26)","--color-bg":"#fff"}},{"#l":{"backgroundColor":"rgb(255, 255, 255)","color":"rgb(26, 26, 26)","--color-bg":"#fff"}}]]
+["c9 lowered-no-scheme",[{"#r":{"backgroundColor":"rgba(0, 0, 0, 0)","color":"rgb(0, 0, 0)","--color-bg":"#fff#000"}},{"#d":{"backgroundColor":"rgba(0, 0, 0, 0)","color":"rgb(0, 0, 0)","--color-bg":"#fff#000"}},{"#l":{"backgroundColor":"rgba(0, 0, 0, 0)","color":"rgb(0, 0, 0)","--color-bg":"#fff#000"}}]]
+-- scheme dark
+["c9 native",[{"#r":{"backgroundColor":"rgb(0, 0, 0)","color":"rgb(230, 230, 230)","--color-bg":"light-dark(#ffffff, #000000)"}},{"#d":{"backgroundColor":"rgb(0, 0, 0)","color":"rgb(230, 230, 230)","--color-bg":"light-dark(#ffffff, #000000)"}},{"#l":{"backgroundColor":"rgb(255, 255, 255)","color":"rgb(26, 26, 26)","--color-bg":"light-dark(#ffffff, #000000)"}}]]
+["c9 lowered",[{"#r":{"backgroundColor":"rgb(0, 0, 0)","color":"rgb(230, 230, 230)","--color-bg":"#000"}},{"#d":{"backgroundColor":"rgb(0, 0, 0)","color":"rgb(230, 230, 230)","--color-bg":"#000"}},{"#l":{"backgroundColor":"rgb(0, 0, 0)","color":"rgb(230, 230, 230)","--color-bg":"#000"}}]]
+["c9 lowered-no-scheme",[{"#r":{"backgroundColor":"rgba(0, 0, 0, 0)","color":"rgb(255, 255, 255)","--color-bg":"#fff#000"}},{"#d":{"backgroundColor":"rgba(0, 0, 0, 0)","color":"rgb(255, 255, 255)","--color-bg":"#fff#000"}},{"#l":{"backgroundColor":"rgba(0, 0, 0, 0)","color":"rgb(255, 255, 255)","--color-bg":"#fff#000"}}]]
+firefox UNAVAILABLE browserType.launch: Executable doesn't exist at /Users/egildo/Library/Caches/ms-playwright/firefox-1572/firefox/Nightly.app/Contents/MacOS/firefox
+```
+
 ## Overall for the sweep
-All eight claims hold in Chromium and WebKit. Open: Firefox not run (UNAVAILABLE); Safari proper (not Playwright WebKit) not run.
+All nine claims hold in Chromium and WebKit. Open: Firefox not run (UNAVAILABLE); Safari proper (not Playwright WebKit) not run.

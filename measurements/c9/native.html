@@ -1,0 +1,13 @@
+<!doctype html><html lang="en"><head>
+<style>
+@layer tokens { @layer defaults, theme; @layer defaults { :root { --color-bg: light-dark(#ffffff, #000000); --color-text: light-dark(#1a1a1a, #e6e6e6); } } }
+.c { background-color: var(--color-bg, #ffffff); color: var(--color-text, #1a1a1a); }
+:root { color-scheme: light dark; }
+.dark { color-scheme: dark; }
+.light { color-scheme: light; }
+</style>
+</head><body>
+<div id="root"><span class="c" id="r">x</span></div>
+<div class="dark"><span class="c" id="d">x</span></div>
+<div class="light"><span class="c" id="l">x</span></div>
+</body></html>
