@@ -75,4 +75,4 @@ jobs:
       # provenance: npm would want package.json's repository to name the mirror,
       # and the repository is Codeberg. A tarball is published as packed: no
       # lifecycle script runs.
-      - run: npm publish package/*.tgz --access public --provenance=false
+      - run: npm publish ./package/*.tgz --access public --provenance=false
