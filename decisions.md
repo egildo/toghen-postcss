@@ -812,7 +812,7 @@ Lib now computes every value it can, so any `oklch()` string or `color-mix(in ok
 
 ## Fixed: what the review of 23 November 2026 found (23 November 2026)
 
-**Status:** built; not released yet. A build that passed under `'throw'` can now fail on three new reports, so this is a minor version.
+**Status:** done, in 0.2.0. A build that passed under `'throw'` can now fail on three new reports, so this is a minor version.
 
 **Where it comes from.** The review is house's `.reference/plans/workspace/review-2026-11-23.md`, with the round's plan beside it. A probe, or a page in Chrome, proved each defect.
 
@@ -855,7 +855,7 @@ Lib now computes every value it can, so any `oklch()` string or `color-mix(in ok
 
 ## Ruled and built: Lightning CSS is an environment the output must survive (23 November 2026)
 
-**Status:** built; not released yet.
+**Status:** done, in 0.2.0.
 
 **Where it comes from.** The plan is house's `.reference/plans/workspace/plan-2026-11-23-lightningcss.md`. Egildo ruled its questions on 23 November 2026: "1a 2b 3a".
 
